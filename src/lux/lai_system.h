@@ -11,6 +11,7 @@
 #include <stdint.h>
 #include <lock.h>
 #include <kprintf.h>
+#include <va_list.h>
 
 #define acpi_printf kprintf
 

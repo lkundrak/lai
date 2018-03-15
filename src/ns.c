@@ -4,6 +4,8 @@
  * Copyright (C) 2018 by Omar Mohammad
  */
 
+/* Generic ACPI Namespace Management */
+
 #include "lai.h"
 
 #define CODE_WINDOW		65536
@@ -125,10 +127,10 @@ void acpi_create_namespace(void *dsdt)
 	acpi_acpins_allocation = CODE_WINDOW;
 	acpi_namespace = acpi_calloc(sizeof(acpi_handle_t), ACPI_MAX_NAMESPACE_ENTRIES);
 
-	acpins_load_table(aml_test);	// custom AML table just for testing
+	//acpins_load_table(aml_test);	// custom AML table just for testing
 
 	// load the DSDT
-	/*acpins_load_table(dsdt);
+	acpins_load_table(dsdt);
 
 	// load all SSDTs
 	size_t index = 0;
@@ -149,22 +151,13 @@ void acpi_create_namespace(void *dsdt)
 		acpins_load_table(psdt);
 		index++;
 		psdt = acpi_scan("PSDT", index);
-	}*/
+	}
 
 	// create the namespace with all the objects
 	// most of the functions are recursive
 	acpins_register_scope(acpi_acpins_code, acpi_acpins_size);
 
 	acpi_printf("acpi: ACPI namespace created, total of %d predefined objects.\n", acpi_namespace_entries);
-
-	acpi_state_t state;
-	acpi_object_t method_return;
-
-	acpi_memset(&state, 0, sizeof(acpi_state_t));
-	acpi_strcpy(state.name, "\\.TEST");
-
-	acpi_exec_method(&state, &method_return);
-	while(1);
 }
 
 // acpins_load_table(): Loads an AML table
@@ -630,6 +623,7 @@ size_t acpins_create_name(void *data)
 
 	uint64_t integer;
 	size_t integer_size = acpi_eval_integer(name, &integer);
+	size_t pkgsize;
 
 	if(integer_size != 0)
 	{
@@ -638,8 +632,9 @@ size_t acpins_create_name(void *data)
 	} else if(name[0] == BUFFER_OP)
 	{
 		acpi_namespace[acpi_namespace_entries].object.type = ACPI_BUFFER;
-		acpi_namespace[acpi_namespace_entries].object.buffer = &name[1];
-		acpi_parse_pkgsize(&name[1], &acpi_namespace[acpi_namespace_entries].object.buffer_size);
+		pkgsize = acpi_parse_pkgsize(&name[1], &acpi_namespace[acpi_namespace_entries].object.buffer_size);
+		acpi_namespace[acpi_namespace_entries].object.buffer = &name[0] + pkgsize + 1;
+		acpi_namespace[acpi_namespace_entries].object.buffer_size -= pkgsize;
 	} else if(name[0] == STRINGPREFIX)
 	{
 		acpi_namespace[acpi_namespace_entries].object.type = ACPI_STRING;

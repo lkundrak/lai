@@ -33,6 +33,11 @@
 #define ACPI_BUFFER			4
 #define ACPI_NAME			5
 
+// AML VM States
+#define ACPI_STATUS_NORMAL		0
+#define ACPI_STATUS_WHILE		1
+#define ACPI_STATUS_CONDITIONAL		2
+
 typedef struct acpi_rsdp_t
 {
 	char signature[8];
@@ -198,14 +203,23 @@ typedef struct acpi_handle_t
 typedef struct acpi_state_t
 {
 	char name[512];
-	acpi_object_t arg0, arg1, arg2, arg3, arg4, arg5, arg6;
-	acpi_object_t local0, local1, local2, local3, local4, local5, local6, local7;
+	acpi_object_t arg[7];
+	acpi_object_t local[8];
+
+	// for looping and conditional control flow
+	int status;
+	acpi_object_t predicate;
+	size_t predicate_size;
+	size_t condition_pkgsize;
+	size_t condition_start;
+	size_t condition_end;
 } acpi_state_t;
 
 acpi_fadt_t *acpi_fadt;
 acpi_aml_t *acpi_dsdt;
 acpi_handle_t *acpi_namespace;
 extern char acpins_path[];
+size_t acpi_namespace_entries;
 
 // OS-specific functions
 void acpi_init();
@@ -218,14 +232,22 @@ void *acpi_malloc(size_t);
 void *acpi_calloc(size_t, size_t);
 void *acpi_realloc(void *, size_t);
 void acpi_free(void *);
+void *acpi_map(size_t, size_t);
 char *acpi_strcpy(char *, const char *);
 size_t acpi_strlen(const char *);
 void *acpi_memset(void *, int, size_t);
 int acpi_strcmp(const char *, const char *);
 int acpi_memcmp(const char *, const char *, size_t);
+void acpi_outb(uint16_t, uint8_t);
+void acpi_outw(uint16_t, uint16_t);
+void acpi_outd(uint16_t, uint32_t);
+uint8_t acpi_inb(uint16_t);
+uint16_t acpi_inw(uint16_t);
+uint32_t acpi_ind(uint16_t);
 
 // The remaining of these functions are OS independent!
 // ACPI namespace functions
+void acpins_increment_namespace();
 size_t acpins_resolve_path(char *, uint8_t *);
 void acpi_create_namespace(void *);
 int acpi_is_name(char);
@@ -248,11 +270,19 @@ size_t acpins_create_wordfield(void *);
 acpi_handle_t *acpins_resolve(char *);
 
 // ACPI Control Methods
-void acpi_set_object(acpi_object_t *, acpi_object_t *);
+size_t acpi_eval_object(acpi_object_t *, acpi_state_t *, void *);
+void acpi_copy_object(acpi_object_t *, acpi_object_t *);
+size_t acpi_write_object(void *, acpi_object_t *, acpi_state_t *, ...);
 acpi_handle_t *acpi_exec_resolve(char *);
 int acpi_exec_method(acpi_state_t *, acpi_object_t *);
+size_t acpi_methodinvoke(void *, acpi_state_t *, acpi_object_t *);
+void acpi_read_opregion(acpi_object_t *, acpi_handle_t *);
+void acpi_write_opregion(acpi_handle_t *, acpi_object_t *);
 size_t acpi_exec_store(void *, acpi_state_t *);
-
-
+size_t acpi_exec_add(void *, acpi_state_t *);
+size_t acpi_exec_name(void *, acpi_state_t *);
+size_t acpi_exec_buffer(acpi_object_t *, acpi_state_t *, void *);
+size_t acpi_exec_increment(void *, acpi_state_t *);
+size_t acpi_exec_decrement(void *, acpi_state_t *);
 
 

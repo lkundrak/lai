@@ -13,6 +13,8 @@
 #include <io.h>
 #include <lock.h>
 
+// Any OS using lai must provide implementations of the following functions
+
 void *acpi_memcpy(void *dest, const void *src, size_t count)
 {
 	return memcpy(dest, src, count);
@@ -48,6 +50,13 @@ void acpi_free(void *ptr)
 	kfree(ptr);
 }
 
+void *acpi_map(size_t physical, size_t count)
+{
+	count += PAGE_SIZE - 1;
+	count >>= PAGE_SIZE_SHIFT;
+	return (void*)vmm_request_map(physical, count, PAGE_PRESENT | PAGE_RW | PAGE_UNCACHEABLE);
+}
+
 size_t acpi_strlen(const char *string)
 {
 	return strlen(string);
@@ -68,6 +77,35 @@ int acpi_strcmp(const char *s1, const char *s2)
 	return strcmp(s1, s2);
 }
 
+void acpi_outb(uint16_t port, uint8_t data)
+{
+	outb(port, data);
+}
+
+void acpi_outw(uint16_t port, uint16_t data)
+{
+	outw(port, data);
+}
+
+void acpi_outd(uint16_t port, uint32_t data)
+{
+	outd(port, data);
+}
+
+uint8_t acpi_inb(uint16_t port)
+{
+	return inb(port);
+}
+
+uint16_t acpi_inw(uint16_t port)
+{
+	return inw(port);
+}
+
+uint32_t acpi_ind(uint16_t port)
+{
+	return ind(port);
+}
 
 
 

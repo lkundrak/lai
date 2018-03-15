@@ -42,6 +42,11 @@
 #define ARG6_OP				0x6E
 #define STORE_OP			0x70
 #define ADD_OP				0x72
+#define INCREMENT_OP			0x75
+#define DECREMENT_OP			0x76
+#define DEREF_OP			0x83
+#define SIZEOF_OP			0x87
+#define INDEX_OP			0x88
 #define DWORDFIELD_OP			0x8A
 #define WORDFIELD_OP			0x8B
 #define BYTEFIELD_OP			0x8C
@@ -49,6 +54,7 @@
 #define QWORDFIELD_OP			0x8F
 #define IF_OP				0xA0
 #define ELSE_OP				0xA1
+#define WHILE_OP			0xA2
 #define NOP_OP				0xA3
 #define RETURN_OP			0xA4
 #define ONES_OP				0xFF
