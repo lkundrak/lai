@@ -168,9 +168,11 @@ void acpi_read_field(acpi_object_t *destination, acpi_handle_t *field)
 		eval_status = acpi_eval(&bus_number, name);
 
 		// when the _BBN object is not present, we assume PCI bus 0
-		if(!eval_status)
+		if(eval_status != 0)
+		{
 			bus_number.type = ACPI_INTEGER;
 			bus_number.integer = 0;
+		}
 
 		// device slot/function is in the _ADR object
 		acpi_strcpy(name, opregion->path);
@@ -178,11 +180,15 @@ void acpi_read_field(acpi_object_t *destination, acpi_handle_t *field)
 		eval_status = acpi_eval(&address_number, name);
 
 		// when this is not present, again default to zero
-		if(!eval_status)
+		if(eval_status != 0)
+		{
 			address_number.type = ACPI_INTEGER;
 			address_number.type = 0;
+		}
 
 		value = acpi_pci_read((uint8_t)bus_number.integer, (uint8_t)(address_number.integer >> 16) & 0xFF, (uint8_t)(address_number.integer & 0xFF), (offset & 0xFFFC) + opregion->op_base);
+
+		//acpi_printf("acpi: read 0x%xd from PCI config 0x%xw, %xb:%xb:%xb\n", value, (uint16_t)(offset & 0xFFFC) + opregion->op_base, (uint8_t)bus_number.integer, (uint8_t)(address_number.integer >> 16) & 0xFF, (uint8_t)address_number.integer & 0xFF);
 		value >>= bit_offset;
 	} else
 	{
@@ -301,11 +307,11 @@ void acpi_write_field(acpi_handle_t *field, acpi_object_t *source)
 	}
 
 	// now determine how we need to write to the field
-	if(field->field_flags & FIELD_PRESERVE)
+	if(((field->field_flags >> 5) & 0x0F) == FIELD_PRESERVE)
 	{
 		value &= ~(mask << bit_offset);
 		value |= (source->integer << bit_offset);
-	} else if(field->field_flags & FIELD_WRITE_ONES)
+	} else if(((field->field_flags >> 5) & 0x0F) == FIELD_WRITE_ONES)
 	{
 		value = 0xFFFFFFFFFFFFFFFF;
 		value &= ~(mask << bit_offset);
