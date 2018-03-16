@@ -372,8 +372,10 @@ size_t acpi_exec_sleep(void *data, acpi_state_t *state)
 	acpi_object_t time;
 	return_size += acpi_eval_object(&time, state, &opcode[0]);
 
-	acpi_printf("acpi: sleeping for %dms\n", time.integer);
-	/*acpi_sleep(time.integer);*/
+	if(time.integer == 0)
+		time.integer = 1;
+
+	acpi_sleep(time.integer);
 
 	return return_size;
 }

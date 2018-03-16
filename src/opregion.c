@@ -29,6 +29,9 @@ void acpi_read_opregion(acpi_object_t *destination, acpi_handle_t *field)
 
 	else if(field->type == ACPI_NAMESPACE_INDEXFIELD)
 		return acpi_read_indexfield(destination, field);
+
+	acpi_printf("acpi: undefined field read: %s\n", field->path);
+	while(1);
 }
 
 // acpi_write_opregion(): Writes to a OpRegion Field or IndexField
@@ -43,6 +46,9 @@ void acpi_write_opregion(acpi_handle_t *field, acpi_object_t *source)
 
 	else if(field->type == ACPI_NAMESPACE_INDEXFIELD)
 		return acpi_write_indexfield(field, source);
+
+	acpi_printf("acpi: undefined field write: %s\n", field->path);
+	while(1);
 }
 
 // acpi_read_field(): Reads from a normal field
@@ -84,15 +90,18 @@ void acpi_read_field(acpi_object_t *destination, acpi_handle_t *field)
 
 		case FIELD_WORD_ACCESS:
 			bit_offset = field->field_offset % 16;
+			offset &= (~1);		// clear lowest bit
 			break;
 
 		case FIELD_DWORD_ACCESS:
 		case FIELD_ANY_ACCESS:
 			bit_offset = field->field_offset % 32;
+			offset &= (~3);		// clear lowest two bits
 			break;
 
 		case FIELD_QWORD_ACCESS:
 			bit_offset = field->field_offset % 64;
+			offset &= (~7);		// clear lowest three bits
 			break;
 
 		default:
@@ -113,19 +122,19 @@ void acpi_read_field(acpi_object_t *destination, acpi_handle_t *field)
 		{
 		case FIELD_BYTE_ACCESS:
 			value = (uint64_t)acpi_inb(opregion->op_base + offset) >> bit_offset;
-			//acpi_printf("acpi: read 0x%xb from I/O port 0x%xw\n", (uint8_t)value, opregion->op_base + offset);
+			//acpi_printf("acpi: read 0x%xb from I/O port 0x%xw, field %s\n", (uint8_t)value, opregion->op_base + offset, field->path);
 			break;
 		case FIELD_WORD_ACCESS:
 			value = (uint64_t)acpi_inw(opregion->op_base + offset) >> bit_offset;
-			//acpi_printf("acpi: read 0x%xw from I/O port 0x%xw\n", (uint16_t)value, opregion->op_base + offset);
+			//acpi_printf("acpi: read 0x%xw from I/O port 0x%xw, field %s\n", (uint16_t)value, opregion->op_base + offset, field->path);
 			break;
 		case FIELD_DWORD_ACCESS:
 		case FIELD_ANY_ACCESS:
 			value = (uint64_t)acpi_ind(opregion->op_base + offset) >> bit_offset;
-			//acpi_printf("acpi: read 0x%xd from I/O port 0x%xw\n", (uint32_t)value, opregion->op_base + offset);
+			//acpi_printf("acpi: read 0x%xd from I/O port 0x%xw, field %s\n", (uint32_t)value, opregion->op_base + offset, field->path);
 			break;
 		default:
-			acpi_printf("acpi: undefined field flags 0x%xb: %s\n", field->field_flags, field->path);
+			//acpi_printf("acpi: undefined field flags 0x%xb: %s\n", field->field_flags, field->path);
 			while(1);
 		}
 	} else if(opregion->op_address_space == OPREGION_MEMORY)
@@ -142,19 +151,23 @@ void acpi_read_field(acpi_object_t *destination, acpi_handle_t *field)
 		case FIELD_BYTE_ACCESS:
 			mmio_byte = (uint8_t*)mmio;
 			value = (uint64_t)mmio_byte[0] >> bit_offset;
+			//acpi_printf("acpi: read 0x%xb from MMIO 0x%xq, field %s\n", (uint8_t)value, opregion->op_base + offset, field->path);
 			break;
 		case FIELD_WORD_ACCESS:
 			mmio_word = (uint16_t*)mmio;
 			value = (uint64_t)mmio_word[0] >> bit_offset;
+			//acpi_printf("acpi: read 0x%xw from MMIO 0x%xq, field %s\n", (uint16_t)value, opregion->op_base + offset, field->path);
 			break;
 		case FIELD_DWORD_ACCESS:
 		case FIELD_ANY_ACCESS:
 			mmio_dword = (uint32_t*)mmio;
 			value = (uint64_t)mmio_dword[0] >> bit_offset;
+			//acpi_printf("acpi: read dword 0x%xd from MMIO 0x%xq, field %s\n", (uint32_t)value, opregion->op_base + offset, field->path);
 			break;
 		case FIELD_QWORD_ACCESS:
 			mmio_qword = (uint64_t*)mmio;
 			value = mmio_qword[0] >> bit_offset;
+			//acpi_printf("acpi: read 0x%xq from MMIO 0x%xq, field %s\n", value, opregion->op_base + offset, field->path);
 			break;
 		default:
 			acpi_printf("acpi: undefined field flags 0x%xb: %s\n", field->field_flags, field->path);
@@ -224,28 +237,44 @@ void acpi_write_field(acpi_handle_t *field, acpi_object_t *source)
 	offset = field->field_offset / 8;
 	void *mmio;
 
-	switch(field->field_flags & 0x0F)
+	// these are for PCI
+	char name[512];
+	acpi_object_t bus_number, address_number;
+	int eval_status;
+	size_t pci_byte_offset;
+
+	if(opregion->op_address_space != OPREGION_PCI)
 	{
-	case FIELD_BYTE_ACCESS:
-		bit_offset = field->field_offset % 8;
-		break;
+		switch(field->field_flags & 0x0F)
+		{
+		case FIELD_BYTE_ACCESS:
+			bit_offset = field->field_offset % 8;
+			break;
 
-	case FIELD_WORD_ACCESS:
-		bit_offset = field->field_offset % 16;
-		break;
+		case FIELD_WORD_ACCESS:
+			bit_offset = field->field_offset % 16;
+			offset &= (~1);		// clear lowest bit
+			break;
 
-	case FIELD_DWORD_ACCESS:
-	case FIELD_ANY_ACCESS:
+		case FIELD_DWORD_ACCESS:
+		case FIELD_ANY_ACCESS:
+			bit_offset = field->field_offset % 32;
+			offset &= (~3);		// clear lowest two bits
+			break;
+
+		case FIELD_QWORD_ACCESS:
+			bit_offset = field->field_offset % 64;
+			offset &= (~7);		// clear lowest three bits
+			break;
+
+		default:
+			acpi_printf("acpi: undefined field flags 0x%xb: %s\n", field->field_flags, field->path);
+			while(1);
+		}
+	} else
+	{
 		bit_offset = field->field_offset % 32;
-		break;
-
-	case FIELD_QWORD_ACCESS:
-		bit_offset = field->field_offset % 64;
-		break;
-
-	default:
-		acpi_printf("acpi: undefined field flags 0x%xb: %s\n", field->field_flags, field->path);
-		while(1);
+		pci_byte_offset = field->field_offset % 4;
 	}
 
 	// read from the field
@@ -300,6 +329,33 @@ void acpi_write_field(acpi_handle_t *field, acpi_object_t *source)
 			acpi_printf("acpi: undefined field flags 0x%xb: %s\n", field->field_flags, field->path);
 			while(1);
 		}
+	} else if(opregion->op_address_space == OPREGION_PCI)
+	{
+		// PCI bus number is in the _BBN object
+		acpi_strcpy(name, opregion->path);
+		acpi_strcpy(name + acpi_strlen(name) - 4, "_BBN");
+		eval_status = acpi_eval(&bus_number, name);
+
+		// when the _BBN object is not present, we assume PCI bus 0
+		if(eval_status != 0)
+		{
+			bus_number.type = ACPI_INTEGER;
+			bus_number.integer = 0;
+		}
+
+		// device slot/function is in the _ADR object
+		acpi_strcpy(name, opregion->path);
+		acpi_strcpy(name + acpi_strlen(name) - 4, "_ADR");
+		eval_status = acpi_eval(&address_number, name);
+
+		// when this is not present, again default to zero
+		if(eval_status != 0)
+		{
+			address_number.type = ACPI_INTEGER;
+			address_number.type = 0;
+		}
+
+		value = acpi_pci_read((uint8_t)bus_number.integer, (uint8_t)(address_number.integer >> 16) & 0xFF, (uint8_t)(address_number.integer & 0xFF), (offset & 0xFFFC) + opregion->op_base);
 	} else
 	{
 		acpi_printf("acpi: undefined opregion address space: %d\n", opregion->op_address_space);
@@ -363,36 +419,36 @@ void acpi_write_field(acpi_handle_t *field, acpi_object_t *source)
 		case FIELD_BYTE_ACCESS:
 			mmio_byte = (uint8_t*)mmio;
 			mmio_byte[0] = (uint8_t)value;
-			acpi_printf("acpi: wrote 0x%xb to MMIO address 0x%xq\n", (uint8_t)value, opregion->op_base + offset);
+			//acpi_printf("acpi: wrote 0x%xb to MMIO address 0x%xq\n", (uint8_t)value, opregion->op_base + offset);
 			break;
 		case FIELD_WORD_ACCESS:
 			mmio_word = (uint16_t*)mmio;
 			mmio_word[0] = (uint16_t)value;
-			acpi_printf("acpi: wrote 0x%xw to MMIO address 0x%xq\n", (uint16_t)value, opregion->op_base + offset);
+			//acpi_printf("acpi: wrote 0x%xw to MMIO address 0x%xq\n", (uint16_t)value, opregion->op_base + offset);
 			break;
 		case FIELD_DWORD_ACCESS:
 		case FIELD_ANY_ACCESS:
 			mmio_dword = (uint32_t*)mmio;
 			mmio_dword[0] = (uint32_t)value;
-			acpi_printf("acpi: wrote 0x%xd to MMIO address 0x%xq\n", (uint32_t)value, opregion->op_base + offset);
+			//acpi_printf("acpi: wrote 0x%xd to MMIO address 0x%xq\n", (uint32_t)value, opregion->op_base + offset);
 			break;
 		case FIELD_QWORD_ACCESS:
 			mmio_qword = (uint64_t*)mmio;
 			mmio_qword[0] = value;
-			acpi_printf("acpi: wrote 0x%xq to MMIO address 0x%xq\n", value, opregion->op_base + offset);
+			//acpi_printf("acpi: wrote 0x%xq to MMIO address 0x%xq\n", value, opregion->op_base + offset);
 			break;
 		default:
 			acpi_printf("acpi: undefined field flags 0x%xb\n", field->field_flags);
 			while(1);
 		}
+	} else if(opregion->op_address_space == OPREGION_PCI)
+	{
+		acpi_pci_write((uint8_t)bus_number.integer, (uint8_t)(address_number.integer >> 16) & 0xFF, (uint8_t)(address_number.integer & 0xFF), (offset & 0xFFFC) + opregion->op_base, (uint32_t)value);
 	} else
 	{
 		acpi_printf("acpi: undefined opregion address space: %d\n", opregion->op_address_space);
 		while(1);
 	}
-
-	// Finished...
-
 }
 
 // acpi_read_indexfield(): Reads from an IndexField

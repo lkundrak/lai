@@ -532,21 +532,40 @@ size_t acpins_create_field(void *data)
 			byte_count += skip_size;
 		}
 
+		while(field[0] == 1)		// access field, unimplemented
+		{
+			field += 3;
+			byte_count += 3;
+		}
+
+		if(!acpi_is_name(field[0]))
+		{
+			field++;
+			byte_count++;
+		}
+
+		if(byte_count >= size)
+			break;
+
 		//acpi_printf("acpi: field %c%c%c%c: size %d bits, at bit offset %d\n", field[0], field[1], field[2], field[3], field[4], current_offset);
 		acpi_namespace[acpi_namespace_entries].type = ACPI_NAMESPACE_FIELD;
-		acpi_memcpy(acpi_namespace[acpi_namespace_entries].path, acpins_path, acpi_strlen(acpins_path));
+		//acpi_memcpy(acpi_namespace[acpi_namespace_entries].path, acpins_path, acpi_strlen(acpins_path));
+
+		name_size = acpins_resolve_path(acpi_namespace[acpi_namespace_entries].path, &field[0]);
+		field += name_size;
+		byte_count += name_size;
+
 		acpi_namespace[acpi_namespace_entries].path[acpi_strlen(acpins_path)] = '.';
-		acpi_memcpy(acpi_namespace[acpi_namespace_entries].path + acpi_strlen(acpins_path) + 1, field, 4);
 		acpi_strcpy(acpi_namespace[acpi_namespace_entries].field_opregion, opregion->path);
 		acpi_namespace[acpi_namespace_entries].field_flags = field_flags;
-		acpi_namespace[acpi_namespace_entries].field_size = field[4];
+		acpi_namespace[acpi_namespace_entries].field_size = field[0];
 		acpi_namespace[acpi_namespace_entries].field_offset = current_offset;
 
-		current_offset += (uint64_t)(field[4]);
+		current_offset += (uint64_t)(field[0]);
 		acpins_increment_namespace();
 
-		field += 5;
-		byte_count += 5;
+		field++;
+		byte_count++;
 	}
 
 	return size + 2;
