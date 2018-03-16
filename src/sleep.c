@@ -25,31 +25,8 @@ int acpi_enter_sleep(uint8_t state)
 	uint8_t sleep_object[] = "_Sx_";
 	sleep_object[2] = state + '0';
 
-	// ACPI spec says we should call _PTS() before actually sleeping
-	// Who knows, it might do some required firmware-specific stuff
-	acpi_state_t acpi_state;
-	acpi_memset(&acpi_state, 0, sizeof(acpi_state_t));
-	acpi_handle_t *handle;
-	handle = acpins_resolve("_PTS");
-
-	acpi_object_t object;
-
-	if(!handle)
-	{
-		acpi_printf("acpi: _PTS() method not present, ignoring...\n");
-	} else
-	{
-		acpi_strcpy(acpi_state.name, handle->path);
-
-		// pass the sleeping type as an argument
-		acpi_state.arg[0].type = ACPI_INTEGER;
-		acpi_state.arg[0].integer = (uint64_t)state & 0xFF;
-
-		acpi_exec_method(&acpi_state, &object);
-	}
-
-	// gather sleeping values
-	handle = acpins_resolve("_S5_");
+	// get sleeping package
+	acpi_handle_t *handle = acpins_resolve((char*)sleep_object);
 	if(!handle)
 	{
 		acpi_printf("acpi: sleep state %d is not supported.\n", state);
@@ -63,6 +40,43 @@ int acpi_enter_sleep(uint8_t state)
 	{
 		acpi_printf("acpi: sleep state %d is not supported.\n", state);
 		return 1;
+	}
+
+	acpi_printf("acpi: entering sleep state %d...\n", state);
+
+	// ACPI spec says we should call _PTS() and _GTS() before actually sleeping
+	// Who knows, it might do some required firmware-specific stuff
+	acpi_state_t acpi_state;
+	acpi_memset(&acpi_state, 0, sizeof(acpi_state_t));
+	handle = acpins_resolve("_PTS");
+
+	acpi_object_t object;
+
+	if(handle)
+	{
+		acpi_strcpy(acpi_state.name, handle->path);
+
+		// pass the sleeping type as an argument
+		acpi_state.arg[0].type = ACPI_INTEGER;
+		acpi_state.arg[0].integer = (uint64_t)state & 0xFF;
+
+		acpi_printf("acpi: execute _PTS(%d)\n", state);
+		acpi_exec_method(&acpi_state, &object);
+	}
+
+	acpi_memset(&acpi_state, 0, sizeof(acpi_state_t));
+	handle = acpins_resolve("_GTS");
+
+	if(handle)
+	{
+		acpi_strcpy(acpi_state.name, handle->path);
+
+		// pass the sleeping type as an argument
+		acpi_state.arg[0].type = ACPI_INTEGER;
+		acpi_state.arg[0].integer = (uint64_t)state & 0xFF;
+
+		acpi_printf("acpi: execute _GTS(%d)\n", state);
+		acpi_exec_method(&acpi_state, &object);
 	}
 
 	acpi_eval_package(&package, 0, &slp_typa);
