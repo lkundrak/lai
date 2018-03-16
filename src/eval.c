@@ -207,7 +207,9 @@ size_t acpi_eval_object(acpi_object_t *destination, acpi_state_t *state, void *d
 	} else if(object[0] == PACKAGE_OP)
 	{
 		// package
-		acpins_create_package(destination, object);
+		destination->type = ACPI_PACKAGE;
+		destination->package = acpi_calloc(sizeof(acpi_object_t), ACPI_MAX_PACKAGE_ENTRIES);
+		destination->package_size = acpins_create_package(destination->package, object);
 		acpi_parse_pkgsize(&object[1], &return_size);
 		return_size++;		// skip PACKAGE_OP
 	} else if(object[0] == BUFFER_OP)
@@ -367,6 +369,9 @@ size_t acpi_eval_object(acpi_object_t *destination, acpi_state_t *state, void *d
 			destination->type = ACPI_INTEGER;
 			uint8_t *byte = (uint8_t*)ref.buffer;
 			destination->integer = (uint64_t)byte[0];
+		} else if(ref.type == ACPI_PACKAGE)
+		{
+			acpi_copy_object(destination, &ref.package[index.integer]);
 		} else
 		{
 			acpi_printf("TO-DO: More Index() objects\n");
@@ -593,6 +598,49 @@ size_t acpi_eval_object(acpi_object_t *destination, acpi_state_t *state, void *d
 			destination->integer = 0;
 		else
 			destination->integer = 1;
+	} else if(object[0] == MULTIPLY_OP)
+	{
+		return_size = 2;
+		object++;
+
+		integer_size = acpi_eval_object(&n1, state, &object[0]);
+		return_size += integer_size;
+		object += integer_size;
+
+		integer_size = acpi_eval_object(&n2, state, &object[0]);
+		return_size += integer_size;
+
+		destination->type = ACPI_INTEGER;
+		destination->integer = n1.integer * n2.integer;
+	} else if(object[0] == DIVIDE_OP)
+	{
+		return_size = 3;
+		object++;
+
+		integer_size = acpi_eval_object(&n1, state, &object[0]);
+		return_size += integer_size;
+		object += integer_size;
+
+		integer_size = acpi_eval_object(&n2, state, &object[0]);
+		return_size += integer_size;
+		object += integer_size;
+
+		acpi_object_t mod, quo;
+		mod.type = ACPI_INTEGER;
+		quo.type = ACPI_INTEGER;
+
+		mod.integer = n1.integer % n2.integer;
+		quo.integer = n1.integer / n2.integer;
+
+		integer_size = acpi_write_object(&object[0], &mod, state);
+		return_size += integer_size;
+		object += integer_size;
+
+		integer_size = acpi_write_object(&object[0], &quo, state);
+		return_size += integer_size;
+
+		destination->type = ACPI_INTEGER;
+		destination->integer = n1.integer / n2.integer;
 	} else
 	{
 		acpi_printf("acpi: undefined opcode, sequence: %xb %xb %xb %xb\n", object[0], object[1], object[2], object[3]);
@@ -635,6 +683,73 @@ int acpi_eval(acpi_object_t *destination, char *path)
 
 	return 1;
 }
+
+// acpi_bswap16(): Switches endianness of a WORD
+// Param:	uint16_t word - WORD
+// Return:	uint16_t - switched value
+
+uint16_t acpi_bswap16(uint16_t word)
+{
+	return (uint16_t)((word >> 8) & 0xFF) | ((word << 8) & 0xFF00);
+}
+
+// acpi_bswap32(): Switches endianness of a DWORD
+// Param:	uint32_t dword - DWORD
+// Return:	uint32 - switched value
+
+uint32_t acpi_bswap32(uint32_t dword)
+{
+	return (uint32_t)((dword>>24) & 0xFF) | ((dword<<8) & 0xFF0000) | ((dword>>8)&0xFF00) | ((dword<<24)&0xFF000000);
+}
+
+// acpi_char_to_hex(): Converts an ASCII hex character to a hex value
+// Param:	char character - ASCII hex char
+// Return:	uint8_t - hex value
+
+uint8_t acpi_char_to_hex(char character)
+{
+	if(character <= '9')
+		return character - '0';
+	else if(character >= 'A' && character <= 'F')
+		return character - 'A' + 10;
+	else if(character >= 'a' && character <= 'f')
+		return character - 'a' + 10;
+
+	return 0;
+}
+
+// acpi_eisaid(): Converts a PNP ID to an ACPI object
+// Param:	acpi_object_t *object - destination
+// Param:	char *id - ACPI PNP ID
+// Return:	Nothing
+
+void acpi_eisaid(acpi_object_t *object, char *id)
+{
+	if(acpi_strlen(id) != 7)
+	{
+		object->type = ACPI_STRING;
+		object->string = id;
+		return;
+	}
+
+	// convert a string in the format "UUUXXXX" to an integer
+	// "U" is an ASCII character, and "X" is an ASCII hex digit
+	object->type = ACPI_INTEGER;
+
+	uint32_t out = 0;
+	out |= ((id[0] - 0x40) << 26);
+	out |= ((id[1] - 0x40) << 21);
+	out |= ((id[2] - 0x40) << 16);
+	out |= acpi_char_to_hex(id[3]) << 12;
+	out |= acpi_char_to_hex(id[4]) << 8;
+	out |= acpi_char_to_hex(id[5]) << 4;
+	out |= acpi_char_to_hex(id[6]);
+
+	out = acpi_bswap32(out);
+	object->integer = (uint64_t)out & 0xFFFFFFFF;
+
+}
+
 
 
 

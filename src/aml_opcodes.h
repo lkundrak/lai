@@ -45,6 +45,8 @@
 #define SUBTRACT_OP			0x74
 #define INCREMENT_OP			0x75
 #define DECREMENT_OP			0x76
+#define MULTIPLY_OP			0x77
+#define DIVIDE_OP			0x78
 #define SHL_OP				0x79
 #define SHR_OP				0x7A
 #define AND_OP				0x7B

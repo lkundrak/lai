@@ -84,9 +84,9 @@ int acpi_exec_method(acpi_state_t *state, acpi_object_t *method_return)
 
 	int status = acpi_exec(method->pointer, method->size, state, method_return);
 
-	//acpi_printf("acpi: %s finished, ", state->name);
+	/*acpi_printf("acpi: %s finished, ", state->name);
 
-	/*if(method_return->type == ACPI_INTEGER)
+	if(method_return->type == ACPI_INTEGER)
 		acpi_printf("return value is integer: %d\n", method_return->integer);
 	else if(method_return->type == ACPI_STRING)
 		acpi_printf("return value is string: '%s'\n", method_return->string);
@@ -119,16 +119,35 @@ int acpi_exec(uint8_t *method, size_t size, acpi_state_t *state, acpi_object_t *
 	size_t i = 0;
 	acpi_object_t invoke_return;
 	state->status = 0;
+	size_t pkgsize, condition_size;
 
 	while(i <= size)
 	{
+		/* While() loops */
 		if((state->status & ACPI_STATUS_WHILE) == 0 && i >= size)
 			break;
 
 		if((state->status & ACPI_STATUS_WHILE) != 0 && i >= state->loop_end)
 			i = state->loop_start;
 
-		// Method Invokation?
+		/* If/Else Conditional */
+		if(!state->condition_level)
+			state->status &= ~ACPI_STATUS_CONDITIONAL;
+
+		if((state->status & ACPI_STATUS_CONDITIONAL) != 0 && i >= state->condition[state->condition_level].end)
+		{
+			if(method[i] == ELSE_OP)
+			{
+				i++;
+				pkgsize = acpi_parse_pkgsize(&method[i], &condition_size);
+				i += condition_size;
+			}
+
+			state->condition_level--;
+			continue;
+		}
+
+		/* Method Invokation? */
 		if(acpi_is_name(method[i]))
 			i += acpi_methodinvoke(&method[i], state, &invoke_return);
 
@@ -138,6 +157,7 @@ int acpi_exec(uint8_t *method, size_t size, acpi_state_t *state, acpi_object_t *
 		if(acpi_is_name(method[i]))
 			continue;
 
+		/* General opcodes */
 		switch(method[i])
 		{
 		case ZERO_OP:
@@ -202,32 +222,29 @@ int acpi_exec(uint8_t *method, size_t size, acpi_state_t *state, acpi_object_t *
 		/* If/Else Conditional */
 		case IF_OP:
 			i++;
-			state->conditional_end = i;
-			i += acpi_parse_pkgsize(&method[i], &state->conditional_pkgsize);
-			state->conditional_end += state->conditional_pkgsize;
+			state->condition_level++;
+			state->condition[state->condition_level].end = i;
+			i += acpi_parse_pkgsize(&method[i], &state->condition[state->condition_level].pkgsize);
+			state->condition[state->condition_level].end += state->condition[state->condition_level].pkgsize;
 
 			// evaluate the predicate
-			state->conditional_predicate_size = acpi_eval_object(&state->conditional_predicate, state, &method[i]);
-			if(state->conditional_predicate.integer == 0)
-				i = state->conditional_end;
-			else
+			state->condition[state->condition_level].predicate_size = acpi_eval_object(&state->condition[state->condition_level].predicate, state, &method[i]);
+			if(state->condition[state->condition_level].predicate.integer == 0)
+			{
+				i = state->condition[state->condition_level].end;
+				state->condition_level--;
+			} else
 			{
 				state->status |= ACPI_STATUS_CONDITIONAL;
-				i += state->conditional_predicate_size;
+				i += state->condition[state->condition_level].predicate_size;
 			}
 
 			break;
 
 		case ELSE_OP:
 			i++;
-			if((state->status & ACPI_STATUS_CONDITIONAL) != 0)
-			{
-				state->status &= ~ACPI_STATUS_CONDITIONAL;
-				acpi_parse_pkgsize(&method[i], &state->conditional_pkgsize);
-				i += state->conditional_pkgsize;
-			} else
-				i += acpi_parse_pkgsize(&method[i], &state->conditional_pkgsize);
-
+			pkgsize = acpi_parse_pkgsize(&method[i], &condition_size);
+			i += pkgsize;
 			break;
 
 		/* Most of the type 2 opcodes are implemented in exec2.c */
@@ -266,6 +283,12 @@ int acpi_exec(uint8_t *method, size_t size, acpi_state_t *state, acpi_object_t *
 			break;
 		case SHL_OP:
 			i += acpi_exec_shl(&method[i], state);
+			break;
+		case MULTIPLY_OP:
+			i += acpi_exec_multiply(&method[i], state);
+			break;
+		case DIVIDE_OP:
+			i += acpi_exec_divide(&method[i], state);
 			break;
 
 		default:
@@ -348,11 +371,9 @@ size_t acpi_exec_sleep(void *data, acpi_state_t *state)
 
 	acpi_object_t time;
 	return_size += acpi_eval_object(&time, state, &opcode[0]);
-	if(time.integer == 0 || time.type != ACPI_INTEGER)
-		return return_size;
 
-	else
-		acpi_sleep(time.integer);
+	acpi_printf("acpi: sleeping for %dms\n", time.integer);
+	/*acpi_sleep(time.integer);*/
 
 	return return_size;
 }

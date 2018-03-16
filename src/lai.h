@@ -221,6 +221,14 @@ typedef struct acpi_handle_t
 	uint64_t buffer_size;		// for Buffer field, in bits
 } acpi_handle_t;
 
+typedef struct acpi_condition_t
+{
+	acpi_object_t predicate;
+	size_t predicate_size;
+	size_t pkgsize;
+	size_t end;
+} acpi_condition_t;
+
 typedef struct acpi_state_t
 {
 	char name[512];
@@ -236,10 +244,8 @@ typedef struct acpi_state_t
 	size_t loop_end;
 
 	// conditional
-	acpi_object_t conditional_predicate;
-	size_t conditional_predicate_size;
-	size_t conditional_pkgsize;
-	size_t conditional_end;
+	int condition_level;
+	acpi_condition_t condition[16];
 } acpi_state_t;
 
 acpi_fadt_t *acpi_fadt;
@@ -300,12 +306,14 @@ size_t acpins_create_processor(void *);
 size_t acpins_create_wordfield(void *);
 acpi_handle_t *acpins_resolve(char *);
 acpi_handle_t *acpins_get_device(size_t);
+acpi_handle_t *acpins_get_deviceid(size_t, acpi_object_t *);
+void acpi_eisaid(acpi_object_t *, char *);
 
 // ACPI Control Methods
 size_t acpi_eval_object(acpi_object_t *, acpi_state_t *, void *);
 int acpi_eval(acpi_object_t *, char *);
 void acpi_copy_object(acpi_object_t *, acpi_object_t *);
-size_t acpi_write_object(void *, acpi_object_t *, acpi_state_t *, ...);
+size_t acpi_write_object(void *, acpi_object_t *, acpi_state_t *);
 acpi_handle_t *acpi_exec_resolve(char *);
 int acpi_exec_method(acpi_state_t *, acpi_object_t *);
 size_t acpi_methodinvoke(void *, acpi_state_t *, acpi_object_t *);
@@ -325,6 +333,11 @@ size_t acpi_exec_xor(void *, acpi_state_t *);
 size_t acpi_exec_shl(void *, acpi_state_t *);
 size_t acpi_exec_shr(void *, acpi_state_t *);
 size_t acpi_exec_sleep(void *, acpi_state_t *);
+uint16_t acpi_bswap16(uint16_t);
+uint32_t acpi_bswap32(uint32_t);
+uint8_t acpi_char_to_hex(char);
+size_t acpi_exec_multiply(void *, acpi_state_t *);
+size_t acpi_exec_divide(void *, acpi_state_t *);
 
 // Generic Functions
 int acpi_enter_sleep(uint8_t);

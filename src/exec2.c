@@ -70,9 +70,10 @@ void acpi_copy_object(acpi_object_t *destination, acpi_object_t *source)
 // Param:	acpi_state_t *state - state of the AML VM
 // Return:	size_t - size in bytes for skipping
 
-size_t acpi_write_object(void *data, acpi_object_t *source, acpi_state_t *state, ...)
+size_t acpi_write_object(void *data, acpi_object_t *source, acpi_state_t *state)
 {
 	uint8_t *dest = (uint8_t*)data;
+	size_t return_size = 0;
 
 	acpi_object_t *dest_reg;
 
@@ -146,13 +147,13 @@ size_t acpi_write_object(void *data, acpi_object_t *source, acpi_state_t *state,
 	size_t integer_size = acpi_eval_integer(dest, &integer);
 	if(integer_size != 0)
 	{
-		va_list params;
+		/*va_list params;
 		va_start(params, state);
 
 		acpi_object_t *tmp = va_arg(params, acpi_object_t*);
 		acpi_copy_object(tmp, source);
 
-		va_end(params);
+		va_end(params);*/
 		return integer_size;
 	}
 
@@ -181,10 +182,35 @@ size_t acpi_write_object(void *data, acpi_object_t *source, acpi_state_t *state,
 		}
 
 		return name_size;
+	} else if(dest[0] == INDEX_OP)
+	{
+		return_size = 1;
+		dest++;
+
+		// the first object should be a package
+		acpi_object_t object, index;
+
+		size_t object_size;
+		object_size = acpi_eval_object(&object, state, &dest[0]);
+		return_size += object_size;
+		dest += object_size;
+
+		object_size = acpi_eval_object(&index, state, &dest[0]);
+		return_size += object_size;
+
+		if(object.type == ACPI_PACKAGE)
+		{
+			acpi_copy_object(&object.package[index.integer], source);
+			return return_size;
+		} else
+		{
+			acpi_printf("acpi: cannot write Index() to non-package object: %d\n", object.type);
+			acpi_printf("acpi: undefined opcode, sequence %xb %xb %xb %xb, method %s\n", dest[0], dest[1], dest[2], dest[3], state->name);
+			while(1);
+		}
 	}
 
-	// TO-DO: Implement IndexOf() opcode here, to treat packages like arrays
-	kprintf("acpi: undefined opcode, sequence %xb %xb %xb %xb\n", dest[0], dest[1], dest[2], dest[3]);
+	acpi_printf("acpi: undefined opcode, sequence %xb %xb %xb %xb\n", dest[0], dest[1], dest[2], dest[3]);
 	while(1);
 }
 
@@ -489,6 +515,75 @@ size_t acpi_exec_shr(void *data, acpi_state_t *state)
 	n1.integer >>= n2.integer;
 
 	size = acpi_write_object(&opcode[0], &n1, state);
+	return_size += size;
+
+	return return_size;
+}
+
+// acpi_exec_multiply(): Executes a Multiply() opcode
+// Param:	void *data - pointer to opcode
+// Param:	acpi_state_t *state - ACPI AML state
+// Return:	size_t - size in bytes for skipping
+
+size_t acpi_exec_multiply(void *data, acpi_state_t *state)
+{
+	size_t return_size = 1;
+	uint8_t *opcode = (uint8_t*)data;
+	opcode++;
+
+	acpi_object_t n1, n2;
+	size_t size;
+
+	size = acpi_eval_object(&n1, state, &opcode[0]);
+	opcode += size;
+	return_size += size;
+
+	size = acpi_eval_object(&n2, state, &opcode[0]);
+	opcode += size;
+	return_size += size;
+
+	n1.integer = n1.integer * n2.integer;
+
+	size = acpi_write_object(&opcode[0], &n1, state);
+	return_size += size;
+
+	return return_size;
+}
+
+// acpi_exec_divide(): Executes a Divide() opcode
+// Param:	void *data - pointer to opcode
+// Param:	acpi_state_t *state - ACPI AML state
+// Return:	size_t - size in bytes for skipping
+
+size_t acpi_exec_divide(void *data, acpi_state_t *state)
+{
+	size_t return_size = 1;
+	uint8_t *opcode = (uint8_t*)data;
+	opcode++;
+
+	acpi_object_t n1, n2;
+	acpi_object_t mod, quo;
+	size_t size;
+
+	size = acpi_eval_object(&n1, state, &opcode[0]);
+	opcode += size;
+	return_size += size;
+
+	size = acpi_eval_object(&n2, state, &opcode[0]);
+	opcode += size;
+	return_size += size;
+
+	mod.type = ACPI_INTEGER;
+	quo.type = ACPI_INTEGER;
+
+	mod.integer = n1.integer % n2.integer;
+	quo.integer = n1.integer / n2.integer;
+
+	size = acpi_write_object(&opcode[0], &mod, state);
+	return_size += size;
+	opcode += size;
+
+	size = acpi_write_object(&opcode[0], &quo, state);
 	return_size += size;
 
 	return return_size;

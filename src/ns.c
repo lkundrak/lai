@@ -1107,6 +1107,47 @@ acpi_handle_t *acpins_get_device(size_t index)
 	return NULL;
 }
 
+// acpins_get_deviceid(): Returns a device by its index and its ID
+// Param:	size_t index - index
+// Param:	acpi_object_t *id - device ID
+// Return:	acpi_handle_t * - device handle, NULL on error
+
+acpi_handle_t *acpins_get_deviceid(size_t index, acpi_object_t *id)
+{
+	size_t i = 0, j = 0;
+
+	acpi_handle_t *handle;
+	char path[512];
+	acpi_object_t device_id;
+
+	handle = acpins_get_device(j);
+	while(handle != NULL)
+	{
+		// read the ID of the device
+		acpi_strcpy(path, handle->path);
+		acpi_strcpy(path + acpi_strlen(path), "._HID");	// hardware ID
+		acpi_memset(&device_id, 0, sizeof(acpi_object_t));
+		acpi_eval(&device_id, path);
+
+		if(device_id.type == ACPI_INTEGER && id->type == ACPI_INTEGER)
+		{
+			if(device_id.integer == id->integer)
+				i++;
+		} else if(device_id.type == ACPI_STRING && id->type == ACPI_STRING)
+		{
+			if(acpi_strcmp(device_id.string, id->string) == 0)
+				i++;
+		}
+
+		if(i > index)
+			return handle;
+
+		j++;
+		handle = acpins_get_device(j);
+	}
+
+	return NULL;
+}
 
 
 
