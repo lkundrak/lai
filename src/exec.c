@@ -28,13 +28,11 @@ int acpi_exec_method(acpi_state_t *state, acpi_object_t *method_return)
 	uint32_t osi_return = 0;
 
 	// When executing the _OSI() method, we'll have one parameter which contains
-	// the name of an OS. We have to pretend to be Linux or a modern version
-	// of Windows, for AML to let us use its features.
+	// the name of an OS. We have to pretend to be a modern version of Windows,
+	// for AML to let us use its features.
 	if(acpi_strcmp(state->name, "\\._OSI") == 0)
 	{
-		if(acpi_strcmp(state->arg[0].string, "Linux") == 0)
-			osi_return = 0xFFFFFFFF;
-		else if(acpi_strcmp(state->arg[0].string, "Windows 2006") == 0)		// Windows Vista
+		if(acpi_strcmp(state->arg[0].string, "Windows 2006") == 0)		// Windows Vista
 			osi_return = 0xFFFFFFFF;
 		else if(acpi_strcmp(state->arg[0].string, "Windows 2009") == 0)		// Windows 7
 			osi_return = 0xFFFFFFFF;

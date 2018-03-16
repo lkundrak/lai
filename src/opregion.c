@@ -363,19 +363,23 @@ void acpi_write_field(acpi_handle_t *field, acpi_object_t *source)
 		case FIELD_BYTE_ACCESS:
 			mmio_byte = (uint8_t*)mmio;
 			mmio_byte[0] = (uint8_t)value;
+			acpi_printf("acpi: wrote 0x%xb to MMIO address 0x%xq\n", (uint8_t)value, opregion->op_base + offset);
 			break;
 		case FIELD_WORD_ACCESS:
 			mmio_word = (uint16_t*)mmio;
 			mmio_word[0] = (uint16_t)value;
+			acpi_printf("acpi: wrote 0x%xw to MMIO address 0x%xq\n", (uint16_t)value, opregion->op_base + offset);
 			break;
 		case FIELD_DWORD_ACCESS:
 		case FIELD_ANY_ACCESS:
 			mmio_dword = (uint32_t*)mmio;
 			mmio_dword[0] = (uint32_t)value;
+			acpi_printf("acpi: wrote 0x%xd to MMIO address 0x%xq\n", (uint32_t)value, opregion->op_base + offset);
 			break;
 		case FIELD_QWORD_ACCESS:
 			mmio_qword = (uint64_t*)mmio;
 			mmio_qword[0] = value;
+			acpi_printf("acpi: wrote 0x%xq to MMIO address 0x%xq\n", value, opregion->op_base + offset);
 			break;
 		default:
 			acpi_printf("acpi: undefined field flags 0x%xb\n", field->field_flags);
