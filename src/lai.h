@@ -26,6 +26,7 @@
 #define ACPI_NAMESPACE_MUTEX		8
 #define ACPI_NAMESPACE_PROCESSOR	9
 #define ACPI_NAMESPACE_BUFFER_FIELD	10
+#define ACPI_NAMESPACE_THERMALZONE	11
 
 #define ACPI_INTEGER			1
 #define ACPI_STRING			2
@@ -34,9 +35,29 @@
 #define ACPI_NAME			5
 
 // AML VM States
-#define ACPI_STATUS_NORMAL		0
 #define ACPI_STATUS_WHILE		1
 #define ACPI_STATUS_CONDITIONAL		2
+
+// Device _STA object
+#define ACPI_STA_PRESENT		0x01
+#define ACPI_STA_ENABLED		0x02
+#define ACPI_STA_VISIBLE		0x04
+#define ACPI_STA_FUNCTION		0x08
+#define ACPI_STA_BATTERY		0x10
+
+// FADT Event/Status Fields
+#define ACPI_TIMER			0x0001
+#define ACPI_BUSMASTER			0x0010
+#define ACPI_GLOBAL			0x0020
+#define ACPI_POWER_BUTTON		0x0100
+#define ACPI_SLEEP_BUTTON		0x0200
+#define ACPI_RTC_ALARM			0x0400
+#define ACPI_PCIE_WAKE			0x4000
+#define ACPI_WAKE			0x8000
+
+// FADT Control Block
+#define ACPI_ENABLED			0x0001
+#define ACPI_SLEEP			0x2000
 
 typedef struct acpi_rsdp_t
 {
@@ -206,13 +227,19 @@ typedef struct acpi_state_t
 	acpi_object_t arg[7];
 	acpi_object_t local[8];
 
-	// for looping and conditional control flow
+	// for looping
 	int status;
-	acpi_object_t predicate;
-	size_t predicate_size;
-	size_t condition_pkgsize;
-	size_t condition_start;
-	size_t condition_end;
+	acpi_object_t loop_predicate;
+	size_t loop_predicate_size;
+	size_t loop_pkgsize;
+	size_t loop_start;
+	size_t loop_end;
+
+	// conditional
+	acpi_object_t conditional_predicate;
+	size_t conditional_predicate_size;
+	size_t conditional_pkgsize;
+	size_t conditional_end;
 } acpi_state_t;
 
 acpi_fadt_t *acpi_fadt;
@@ -241,9 +268,12 @@ int acpi_memcmp(const char *, const char *, size_t);
 void acpi_outb(uint16_t, uint8_t);
 void acpi_outw(uint16_t, uint16_t);
 void acpi_outd(uint16_t, uint32_t);
+void acpi_pci_write(uint8_t, uint8_t, uint8_t, uint16_t, uint32_t);
+uint32_t acpi_pci_read(uint8_t, uint8_t, uint8_t, uint16_t);
 uint8_t acpi_inb(uint16_t);
 uint16_t acpi_inw(uint16_t);
 uint32_t acpi_ind(uint16_t);
+void acpi_sleep(uint64_t);
 
 // The remaining of these functions are OS independent!
 // ACPI namespace functions
@@ -260,6 +290,7 @@ size_t acpins_create_opregion(void *);
 size_t acpins_create_field(void *);
 size_t acpins_create_method(void *);
 size_t acpins_create_device(void *);
+size_t acpins_create_thermalzone(void *);
 size_t acpins_create_name(void *);
 size_t acpins_create_alias(void *);
 size_t acpins_create_mutex(void *);
@@ -268,9 +299,11 @@ size_t acpins_create_package(acpi_object_t *, void *);
 size_t acpins_create_processor(void *);
 size_t acpins_create_wordfield(void *);
 acpi_handle_t *acpins_resolve(char *);
+acpi_handle_t *acpins_get_device(size_t);
 
 // ACPI Control Methods
 size_t acpi_eval_object(acpi_object_t *, acpi_state_t *, void *);
+int acpi_eval(acpi_object_t *, char *);
 void acpi_copy_object(acpi_object_t *, acpi_object_t *);
 size_t acpi_write_object(void *, acpi_object_t *, acpi_state_t *, ...);
 acpi_handle_t *acpi_exec_resolve(char *);
@@ -284,5 +317,17 @@ size_t acpi_exec_name(void *, acpi_state_t *);
 size_t acpi_exec_buffer(acpi_object_t *, acpi_state_t *, void *);
 size_t acpi_exec_increment(void *, acpi_state_t *);
 size_t acpi_exec_decrement(void *, acpi_state_t *);
+size_t acpi_exec_and(void *, acpi_state_t *);
+size_t acpi_exec_or(void *, acpi_state_t *);
+size_t acpi_exec_subtract(void *, acpi_state_t *);
+size_t acpi_exec_not(void *, acpi_state_t *);
+size_t acpi_exec_xor(void *, acpi_state_t *);
+size_t acpi_exec_shl(void *, acpi_state_t *);
+size_t acpi_exec_shr(void *, acpi_state_t *);
+size_t acpi_exec_sleep(void *, acpi_state_t *);
+
+// Generic Functions
+int acpi_enter_sleep(uint8_t);
+
 
 

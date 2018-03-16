@@ -13,6 +13,9 @@
 
 int acpi_exec(uint8_t *, size_t, acpi_state_t *, acpi_object_t *);
 
+char acpi_emulated_os[] = "Windows 2015";		// Windows 10
+uint64_t acpi_implemented_version = 2;			// ACPI 2.0
+
 // acpi_exec_method(): Finds and executes a control method
 // Param:	acpi_state_t *state - method name and arguments
 // Param:	acpi_object_t *method_return - return value of method
@@ -21,6 +24,60 @@ int acpi_exec(uint8_t *, size_t, acpi_state_t *, acpi_object_t *);
 int acpi_exec_method(acpi_state_t *state, acpi_object_t *method_return)
 {
 	acpi_handle_t *method;
+
+	uint32_t osi_return = 0;
+
+	// When executing the _OSI() method, we'll have one parameter which contains
+	// the name of an OS. We have to pretend to be Linux or a modern version
+	// of Windows, for AML to let us use its features.
+	if(acpi_strcmp(state->name, "\\._OSI") == 0)
+	{
+		if(acpi_strcmp(state->arg[0].string, "Linux") == 0)
+			osi_return = 0xFFFFFFFF;
+		else if(acpi_strcmp(state->arg[0].string, "Windows 2006") == 0)		// Windows Vista
+			osi_return = 0xFFFFFFFF;
+		else if(acpi_strcmp(state->arg[0].string, "Windows 2009") == 0)		// Windows 7
+			osi_return = 0xFFFFFFFF;
+		else if(acpi_strcmp(state->arg[0].string, "Windows 2012") == 0)		// Windows 8
+			osi_return = 0xFFFFFFFF;
+		else if(acpi_strcmp(state->arg[0].string, "Windows 2013") == 0)		// Windows 8.1
+			osi_return = 0xFFFFFFFF;
+		else if(acpi_strcmp(state->arg[0].string, "Windows 2015") == 0)		// Windows 10
+			osi_return = 0xFFFFFFFF;
+
+		else
+			osi_return = 0x00000000;	// unsupported OS
+
+		method_return->type = ACPI_INTEGER;
+		method_return->integer = osi_return;
+
+		acpi_printf("acpi: _OSI('%s') returned 0x%xd\n", state->arg[0].string, osi_return);
+		return 0;
+	}
+
+	// We'll tell the AML code we are Windows 10
+	if(acpi_strcmp(state->name, "\\._OS_") == 0)
+	{
+		method_return->type = ACPI_STRING;
+		method_return->string = acpi_malloc(acpi_strlen(acpi_emulated_os));
+		acpi_strcpy(method_return->string, acpi_emulated_os);
+
+		acpi_printf("acpi: _OS_ returned '%s'\n", method_return->string);
+		return 0;
+	}
+
+	// All versions of Windows starting from Windows Vista claim to implement
+	// at least ACPI 2.0. Therefore we also need to do the same.
+	if(acpi_strcmp(state->name, "\\._REV") == 0)
+	{
+		method_return->type = ACPI_INTEGER;
+		method_return->integer = acpi_implemented_version;
+
+		acpi_printf("acpi: _REV returned %d\n", method_return->integer);
+		return 0;
+	}
+
+	// Okay, by here it's a real method
 	method = acpins_resolve(state->name);
 	if(!method)
 		return -1;
@@ -63,15 +120,15 @@ int acpi_exec(uint8_t *method, size_t size, acpi_state_t *state, acpi_object_t *
 
 	size_t i = 0;
 	acpi_object_t invoke_return;
-	state->status = ACPI_STATUS_NORMAL;
+	state->status = 0;
 
 	while(i <= size)
 	{
-		if(state->status != ACPI_STATUS_WHILE && i >= size)
+		if((state->status & ACPI_STATUS_WHILE) == 0 && i >= size)
 			break;
 
-		if(state->status == ACPI_STATUS_WHILE && i >= state->condition_end)
-			i = state->condition_start;
+		if((state->status & ACPI_STATUS_WHILE) != 0 && i >= state->loop_end)
+			i = state->loop_start;
 
 		// Method Invokation?
 		if(acpi_is_name(method[i]))
@@ -92,6 +149,18 @@ int acpi_exec(uint8_t *method, size_t size, acpi_state_t *state, acpi_object_t *
 			i++;
 			break;
 
+		case EXTOP_PREFIX:
+			switch(method[i+1])
+			{
+			case SLEEP_OP:
+				i += acpi_exec_sleep(&method[i], state);
+				break;
+			default:
+				acpi_printf("acpi: undefined opcode in control method %s, sequence %xb %xb %xb %xb\n", state->name, method[i], method[i+1], method[i+2], method[i+3]);
+				while(1);
+			}
+			break;
+
 		/* A control method can return literally any object */
 		/* So we need to take this into consideration */
 		case RETURN_OP:
@@ -99,24 +168,67 @@ int acpi_exec(uint8_t *method, size_t size, acpi_state_t *state, acpi_object_t *
 			acpi_eval_object(method_return, state, &method[i]);
 			return 0;
 
+		/* While Loops */
 		case WHILE_OP:
-			state->condition_start = i;
+			state->loop_start = i;
 			i++;
-			state->condition_end = i;
-			state->status = ACPI_STATUS_WHILE;
-			i += acpi_parse_pkgsize(&method[i], &state->condition_pkgsize);
-			state->condition_end += state->condition_pkgsize;
+			state->loop_end = i;
+			state->status |= ACPI_STATUS_WHILE;
+			i += acpi_parse_pkgsize(&method[i], &state->loop_pkgsize);
+			state->loop_end += state->loop_pkgsize;
 
 			// evaluate the predicate
-			state->predicate_size = acpi_eval_object(&state->predicate, state, &method[i]);
-			if(state->predicate.integer == 0)
+			state->loop_predicate_size = acpi_eval_object(&state->loop_predicate, state, &method[i]);
+			if(state->loop_predicate.integer == 0)
 			{
-				state->status = ACPI_STATUS_NORMAL;
-				i = state->condition_end;
+				state->status &= ~ACPI_STATUS_WHILE;
+				i = state->loop_end;
 			} else
 			{
-				i += state->predicate_size;
+				i += state->loop_predicate_size;
 			}
+
+			break;
+
+		/* Continue Looping */
+		case CONTINUE_OP:
+			i = state->loop_start;
+			break;
+
+		/* Break Loop */
+		case BREAK_OP:
+			i = state->loop_end;
+			state->status &= ~ACPI_STATUS_WHILE;
+			break;
+
+		/* If/Else Conditional */
+		case IF_OP:
+			i++;
+			state->conditional_end = i;
+			i += acpi_parse_pkgsize(&method[i], &state->conditional_pkgsize);
+			state->conditional_end += state->conditional_pkgsize;
+
+			// evaluate the predicate
+			state->conditional_predicate_size = acpi_eval_object(&state->conditional_predicate, state, &method[i]);
+			if(state->conditional_predicate.integer == 0)
+				i = state->conditional_end;
+			else
+			{
+				state->status |= ACPI_STATUS_CONDITIONAL;
+				i += state->conditional_predicate_size;
+			}
+
+			break;
+
+		case ELSE_OP:
+			i++;
+			if((state->status & ACPI_STATUS_CONDITIONAL) != 0)
+			{
+				state->status &= ~ACPI_STATUS_CONDITIONAL;
+				acpi_parse_pkgsize(&method[i], &state->conditional_pkgsize);
+				i += state->conditional_pkgsize;
+			} else
+				i += acpi_parse_pkgsize(&method[i], &state->conditional_pkgsize);
 
 			break;
 
@@ -130,11 +242,32 @@ int acpi_exec(uint8_t *method, size_t size, acpi_state_t *state, acpi_object_t *
 		case ADD_OP:
 			i += acpi_exec_add(&method[i], state);
 			break;
+		case SUBTRACT_OP:
+			i += acpi_exec_subtract(&method[i], state);
+			break;
 		case INCREMENT_OP:
 			i += acpi_exec_increment(&method[i], state);
 			break;
 		case DECREMENT_OP:
 			i += acpi_exec_decrement(&method[i], state);
+			break;
+		case AND_OP:
+			i += acpi_exec_and(&method[i], state);
+			break;
+		case OR_OP:
+			i += acpi_exec_or(&method[i], state);
+			break;
+		case NOT_OP:
+			i += acpi_exec_not(&method[i], state);
+			break;
+		case XOR_OP:
+			i += acpi_exec_xor(&method[i], state);
+			break;
+		case SHR_OP:
+			i += acpi_exec_shr(&method[i], state);
+			break;
+		case SHL_OP:
+			i += acpi_exec_shl(&method[i], state);
 			break;
 
 		default:
@@ -204,6 +337,27 @@ size_t acpi_methodinvoke(void *data, acpi_state_t *old_state, acpi_object_t *met
 	return return_size;
 }
 
+// acpi_exec_sleep(): Executes a Sleep() opcode
+// Param:	void *data - opcode data
+// Param:	acpi_state_t *state - AML VM state
+// Return:	size_t - size in bytes for skipping
+
+size_t acpi_exec_sleep(void *data, acpi_state_t *state)
+{
+	size_t return_size = 2;
+	uint8_t *opcode = (uint8_t*)data;
+	opcode += 2;		// skip EXTOP_PREFIX and SLEEP_OP
+
+	acpi_object_t time;
+	return_size += acpi_eval_object(&time, state, &opcode[0]);
+	if(time.integer == 0 || time.type != ACPI_INTEGER)
+		return return_size;
+
+	else
+		acpi_sleep(time.integer);
+
+	return return_size;
+}
 
 
 

@@ -68,28 +68,41 @@ void acpi_read_field(acpi_object_t *destination, acpi_handle_t *field)
 	offset = field->field_offset / 8;
 	void *mmio;
 
-	switch(field->field_flags & 0x0F)
+	// these are for PCI
+	char name[512];
+	acpi_object_t bus_number, address_number;
+	int eval_status;
+	size_t pci_byte_offset;
+
+	if(opregion->op_address_space != OPREGION_PCI)
 	{
-	case FIELD_BYTE_ACCESS:
-		bit_offset = field->field_offset % 8;
-		break;
+		switch(field->field_flags & 0x0F)
+		{
+		case FIELD_BYTE_ACCESS:
+			bit_offset = field->field_offset % 8;
+			break;
 
-	case FIELD_WORD_ACCESS:
-		bit_offset = field->field_offset % 16;
-		break;
+		case FIELD_WORD_ACCESS:
+			bit_offset = field->field_offset % 16;
+			break;
 
-	case FIELD_DWORD_ACCESS:
-	case FIELD_ANY_ACCESS:
+		case FIELD_DWORD_ACCESS:
+		case FIELD_ANY_ACCESS:
+			bit_offset = field->field_offset % 32;
+			break;
+
+		case FIELD_QWORD_ACCESS:
+			bit_offset = field->field_offset % 64;
+			break;
+
+		default:
+			acpi_printf("acpi: undefined field flags 0x%xb: %s\n", field->field_flags, field->path);
+			while(1);
+		}
+	} else
+	{
 		bit_offset = field->field_offset % 32;
-		break;
-
-	case FIELD_QWORD_ACCESS:
-		bit_offset = field->field_offset % 64;
-		break;
-
-	default:
-		acpi_printf("acpi: undefined field flags 0x%xb\n", field->field_flags);
-		while(1);
+		pci_byte_offset = field->field_offset % 4;
 	}
 
 	// now read from either I/O ports, MMIO, or PCI config
@@ -112,7 +125,7 @@ void acpi_read_field(acpi_object_t *destination, acpi_handle_t *field)
 			//acpi_printf("acpi: read 0x%xd from I/O port 0x%xw\n", (uint32_t)value, opregion->op_base + offset);
 			break;
 		default:
-			acpi_printf("acpi: undefined field flags 0x%xb\n", field->field_flags);
+			acpi_printf("acpi: undefined field flags 0x%xb: %s\n", field->field_flags, field->path);
 			while(1);
 		}
 	} else if(opregion->op_address_space == OPREGION_MEMORY)
@@ -144,9 +157,33 @@ void acpi_read_field(acpi_object_t *destination, acpi_handle_t *field)
 			value = mmio_qword[0] >> bit_offset;
 			break;
 		default:
-			acpi_printf("acpi: undefined field flags 0x%xb\n", field->field_flags);
+			acpi_printf("acpi: undefined field flags 0x%xb: %s\n", field->field_flags, field->path);
 			while(1);
 		}
+	} else if(opregion->op_address_space == OPREGION_PCI)
+	{
+		// PCI bus number is in the _BBN object
+		acpi_strcpy(name, opregion->path);
+		acpi_strcpy(name + acpi_strlen(name) - 4, "_BBN");
+		eval_status = acpi_eval(&bus_number, name);
+
+		// when the _BBN object is not present, we assume PCI bus 0
+		if(!eval_status)
+			bus_number.type = ACPI_INTEGER;
+			bus_number.integer = 0;
+
+		// device slot/function is in the _ADR object
+		acpi_strcpy(name, opregion->path);
+		acpi_strcpy(name + acpi_strlen(name) - 4, "_ADR");
+		eval_status = acpi_eval(&address_number, name);
+
+		// when this is not present, again default to zero
+		if(!eval_status)
+			address_number.type = ACPI_INTEGER;
+			address_number.type = 0;
+
+		value = acpi_pci_read((uint8_t)bus_number.integer, (uint8_t)(address_number.integer >> 16) & 0xFF, (uint8_t)(address_number.integer & 0xFF), (offset & 0xFFFC) + opregion->op_base);
+		value >>= bit_offset;
 	} else
 	{
 		acpi_printf("acpi: undefined opregion address space: %d\n", opregion->op_address_space);
@@ -201,7 +238,7 @@ void acpi_write_field(acpi_handle_t *field, acpi_object_t *source)
 		break;
 
 	default:
-		acpi_printf("acpi: undefined field flags 0x%xb\n", field->field_flags);
+		acpi_printf("acpi: undefined field flags 0x%xb: %s\n", field->field_flags, field->path);
 		while(1);
 	}
 
@@ -222,7 +259,7 @@ void acpi_write_field(acpi_handle_t *field, acpi_object_t *source)
 			value = (uint64_t)acpi_ind(opregion->op_base + offset);
 			break;
 		default:
-			acpi_printf("acpi: undefined field flags 0x%xb\n", field->field_flags);
+			acpi_printf("acpi: undefined field flags 0x%xb: %s\n", field->field_flags, field->path);
 			while(1);
 		}
 	} else if(opregion->op_address_space == OPREGION_MEMORY)
@@ -254,7 +291,7 @@ void acpi_write_field(acpi_handle_t *field, acpi_object_t *source)
 			value = mmio_qword[0];
 			break;
 		default:
-			acpi_printf("acpi: undefined field flags 0x%xb\n", field->field_flags);
+			acpi_printf("acpi: undefined field flags 0x%xb: %s\n", field->field_flags, field->path);
 			while(1);
 		}
 	} else
@@ -273,14 +310,10 @@ void acpi_write_field(acpi_handle_t *field, acpi_object_t *source)
 		value = 0xFFFFFFFFFFFFFFFF;
 		value &= ~(mask << bit_offset);
 		value |= (source->integer << bit_offset);
-	} else if(field->field_flags & FIELD_WRITE_ZEROES)
+	} else
 	{
 		value = 0;
 		value |= (source->integer << bit_offset);
-	} else
-	{
-		acpi_printf("acpi: undefined field flags 0x%xb\n", field->field_flags);
-		while(1);
 	}
 
 	// finally, write to the field
@@ -303,7 +336,7 @@ void acpi_write_field(acpi_handle_t *field, acpi_object_t *source)
 			//acpi_printf("acpi: wrote 0x%xd to I/O port 0x%xw\n", (uint32_t)value, opregion->op_base + offset);
 			break;
 		default:
-			acpi_printf("acpi: undefined field flags 0x%xb\n", field->field_flags);
+			acpi_printf("acpi: undefined field flags 0x%xb: %s\n", field->field_flags, field->path);
 			while(1);
 		}
 

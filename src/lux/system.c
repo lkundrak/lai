@@ -12,6 +12,8 @@
 #include <mm.h>
 #include <io.h>
 #include <lock.h>
+#include <pci.h>
+#include <timer.h>
 
 // Any OS using lai must provide implementations of the following functions
 
@@ -105,6 +107,31 @@ uint16_t acpi_inw(uint16_t port)
 uint32_t acpi_ind(uint16_t port)
 {
 	return ind(port);
+}
+
+void acpi_pci_write(uint8_t bus, uint8_t slot, uint8_t function, uint16_t offset, uint32_t data)
+{
+	pci_device_t device;
+	device.bus = bus;
+	device.slot = slot;
+	device.function = function;
+
+	pci_write(&device, offset, data);
+}
+
+uint32_t acpi_pci_read(uint8_t bus, uint8_t slot, uint8_t function, uint16_t offset)
+{
+	pci_device_t device;
+	device.bus = bus;
+	device.slot = slot;
+	device.function = function;
+
+	return pci_read(&device, offset);
+}
+
+void acpi_sleep(uint64_t time)
+{
+	timer_sleep(time);
 }
 
 

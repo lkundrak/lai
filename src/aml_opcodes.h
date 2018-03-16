@@ -42,8 +42,15 @@
 #define ARG6_OP				0x6E
 #define STORE_OP			0x70
 #define ADD_OP				0x72
+#define SUBTRACT_OP			0x74
 #define INCREMENT_OP			0x75
 #define DECREMENT_OP			0x76
+#define SHL_OP				0x79
+#define SHR_OP				0x7A
+#define AND_OP				0x7B
+#define OR_OP				0x7D
+#define XOR_OP				0x7F
+#define NOT_OP				0x80
 #define DEREF_OP			0x83
 #define SIZEOF_OP			0x87
 #define INDEX_OP			0x88
@@ -52,20 +59,31 @@
 #define BYTEFIELD_OP			0x8C
 #define BITFIELD_OP			0x8D
 #define QWORDFIELD_OP			0x8F
+#define LAND_OP				0x90
+#define LOR_OP				0x91
+#define LNOT_OP				0x92
+#define LEQUAL_OP			0x93
+#define LGREATER_OP			0x94
+#define LLESS_OP			0x95
+#define CONTINUE_OP			0x9F
 #define IF_OP				0xA0
 #define ELSE_OP				0xA1
 #define WHILE_OP			0xA2
 #define NOP_OP				0xA3
 #define RETURN_OP			0xA4
+#define BREAK_OP			0xA5
 #define ONES_OP				0xFF
 
 // Extended opcodes
 #define MUTEX				0x01
+#define CONDREF_OP			0x12
 #define ARBFIELD_OP			0x13
+#define SLEEP_OP			0x22
 #define OPREGION			0x80
 #define FIELD				0x81
 #define DEVICE				0x82
 #define PROCESSOR			0x83
+#define THERMALZONE			0x85
 #define INDEXFIELD			0x86	// ACPI spec v5.0 section 19.5.60
 
 // OpRegion Address Spaces

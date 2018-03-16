@@ -27,23 +27,22 @@ acpi_handle_t *acpi_exec_resolve(char *path)
 {
 	acpi_handle_t *object;
 	object = acpins_resolve(path);
-	if(!object)
-	{
-		if(acpi_strlen(path) <= 6)
-			return NULL;
 
-		// because method scopes include the method and its parent's too
+	if(acpi_strlen(path) == 4)
+		return acpins_resolve(path);
+
+	while(!object && acpi_strlen(path) > 6)
+	{
 		acpi_memmove(path + acpi_strlen(path) - 9, path + acpi_strlen(path) - 4, 5);
 		object = acpins_resolve(path);
-		if(!object)
-		{
-			acpi_memmove(path + 2, path + acpi_strlen(path) - 4, 5);
-			object = acpins_resolve(path);
-			if(!object)
-				return NULL;
-		}
+		if(object != NULL)
+			goto resolve_alias;
 	}
 
+	if(object == NULL)
+		return NULL;
+
+resolve_alias:
 	// resolve Aliases too
 	while(object->type == ACPI_NAMESPACE_ALIAS)
 	{
@@ -290,6 +289,210 @@ size_t acpi_exec_decrement(void *data, acpi_state_t *state)
 	return return_size;
 }
 
+// acpi_exec_and(): Executes an And() opcode
+// Param:	void *data - pointer to opcode
+// Param:	acpi_state_t *state - ACPI AML state
+// Return:	size_t - size in bytes for skipping
+
+size_t acpi_exec_and(void *data, acpi_state_t *state)
+{
+	size_t return_size = 1;
+	uint8_t *opcode = (uint8_t*)data;
+	opcode++;
+
+	acpi_object_t n1, n2;
+	size_t size;
+
+	size = acpi_eval_object(&n1, state, &opcode[0]);
+	opcode += size;
+	return_size += size;
+
+	size = acpi_eval_object(&n2, state, &opcode[0]);
+	opcode += size;
+	return_size += size;
+
+	n1.integer &= n2.integer;
+
+	size = acpi_write_object(&opcode[0], &n1, state);
+	return_size += size;
+
+	return return_size;
+}
+
+// acpi_exec_or(): Executes an Or() opcode
+// Param:	void *data - pointer to opcode
+// Param:	acpi_state_t *state - ACPI AML state
+// Return:	size_t - size in bytes for skipping
+
+size_t acpi_exec_or(void *data, acpi_state_t *state)
+{
+	size_t return_size = 1;
+	uint8_t *opcode = (uint8_t*)data;
+	opcode++;
+
+	acpi_object_t n1, n2;
+	size_t size;
+
+	size = acpi_eval_object(&n1, state, &opcode[0]);
+	opcode += size;
+	return_size += size;
+
+	size = acpi_eval_object(&n2, state, &opcode[0]);
+	opcode += size;
+	return_size += size;
+
+	n1.integer |= n2.integer;
+
+	size = acpi_write_object(&opcode[0], &n1, state);
+	return_size += size;
+
+	return return_size;
+}
+
+// acpi_exec_subtract(): Executes a Subtract() opcode
+// Param:	void *data - pointer to opcode
+// Param:	acpi_state_t *state - ACPI AML state
+// Return:	size_t - size in bytes for skipping
+
+size_t acpi_exec_subtract(void *data, acpi_state_t *state)
+{
+	size_t return_size = 1;
+	uint8_t *opcode = (uint8_t*)data;
+	opcode++;
+
+	acpi_object_t n1, n2;
+	size_t size;
+
+	size = acpi_eval_object(&n1, state, &opcode[0]);
+	opcode += size;
+	return_size += size;
+
+	size = acpi_eval_object(&n2, state, &opcode[0]);
+	opcode += size;
+	return_size += size;
+
+	n1.integer -= n2.integer;
+
+	size = acpi_write_object(&opcode[0], &n1, state);
+	return_size += size;
+
+	return return_size;
+}
+
+// acpi_exec_not(): Executes a Not() opcode
+// Param:	void *data - pointer to opcode
+// Param:	acpi_state_t *state - ACPI AML state
+// Return:	size_t - size in bytes for skipping
+
+size_t acpi_exec_not(void *data, acpi_state_t *state)
+{
+	size_t return_size = 1;
+	uint8_t *opcode = (uint8_t*)data;
+	opcode++;
+
+	acpi_object_t n1;
+	size_t size;
+
+	size = acpi_eval_object(&n1, state, &opcode[0]);
+	opcode += size;
+	return_size += size;
+
+	n1.integer = ~n1.integer;
+	size = acpi_write_object(&opcode[0], &n1, state);
+	return_size += size;
+
+	return return_size;
+}
+
+// acpi_exec_xor(): Executes an Xor() opcode
+// Param:	void *data - pointer to opcode
+// Param:	acpi_state_t *state - ACPI AML state
+// Return:	size_t - size in bytes for skipping
+
+size_t acpi_exec_xor(void *data, acpi_state_t *state)
+{
+	size_t return_size = 1;
+	uint8_t *opcode = (uint8_t*)data;
+	opcode++;
+
+	acpi_object_t n1, n2;
+	size_t size;
+
+	size = acpi_eval_object(&n1, state, &opcode[0]);
+	opcode += size;
+	return_size += size;
+
+	size = acpi_eval_object(&n2, state, &opcode[0]);
+	opcode += size;
+	return_size += size;
+
+	n1.integer ^= n2.integer;
+
+	size = acpi_write_object(&opcode[0], &n1, state);
+	return_size += size;
+
+	return return_size;
+}
+
+// acpi_exec_shl(): Executes a Shl() opcode
+// Param:	void *data - pointer to opcode
+// Param:	acpi_state_t *state - ACPI AML state
+// Return:	size_t - size in bytes for skipping
+
+size_t acpi_exec_shl(void *data, acpi_state_t *state)
+{
+	size_t return_size = 1;
+	uint8_t *opcode = (uint8_t*)data;
+	opcode++;
+
+	acpi_object_t n1, n2;
+	size_t size;
+
+	size = acpi_eval_object(&n1, state, &opcode[0]);
+	opcode += size;
+	return_size += size;
+
+	size = acpi_eval_object(&n2, state, &opcode[0]);
+	opcode += size;
+	return_size += size;
+
+	n1.integer <<= n2.integer;
+
+	size = acpi_write_object(&opcode[0], &n1, state);
+	return_size += size;
+
+	return return_size;
+}
+
+// acpi_exec_shr(): Executes a Shr() opcode
+// Param:	void *data - pointer to opcode
+// Param:	acpi_state_t *state - ACPI AML state
+// Return:	size_t - size in bytes for skipping
+
+size_t acpi_exec_shr(void *data, acpi_state_t *state)
+{
+	size_t return_size = 1;
+	uint8_t *opcode = (uint8_t*)data;
+	opcode++;
+
+	acpi_object_t n1, n2;
+	size_t size;
+
+	size = acpi_eval_object(&n1, state, &opcode[0]);
+	opcode += size;
+	return_size += size;
+
+	size = acpi_eval_object(&n2, state, &opcode[0]);
+	opcode += size;
+	return_size += size;
+
+	n1.integer >>= n2.integer;
+
+	size = acpi_write_object(&opcode[0], &n1, state);
+	return_size += size;
+
+	return return_size;
+}
 
 
 

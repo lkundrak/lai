@@ -124,6 +124,7 @@ size_t acpi_eval_object(acpi_object_t *destination, acpi_state_t *state, void *d
 	char name[512];
 	acpi_object_t *destination_reg;
 	acpi_object_t *sizeof_object;
+	acpi_object_t n1, n2;
 
 	// try register
 	if(object[0] >= LOCAL0_OP && object[0] <= LOCAL7_OP)
@@ -340,6 +341,7 @@ size_t acpi_eval_object(acpi_object_t *destination, acpi_state_t *state, void *d
 		}
 	} else if(object[0] == DEREF_OP)
 	{
+		// what a fucking waste of space DeRef is.
 		return_size = acpi_eval_object(destination, state, &object[1]) + 1;
 	} else if(object[0] == INDEX_OP)
 	{
@@ -367,10 +369,230 @@ size_t acpi_eval_object(acpi_object_t *destination, acpi_state_t *state, void *d
 			destination->integer = (uint64_t)byte[0];
 		} else
 		{
-			acpi_printf("%d\n", ref.type);
 			acpi_printf("TO-DO: More Index() objects\n");
 			while(1);
 		}
+	} else if(object[0] == LNOT_OP)
+	{
+		return_size = 1;
+		object++;
+
+		return_size += acpi_eval_object(&n1, state, &object[0]);
+		destination->type = ACPI_INTEGER;
+		if(n1.integer == 0)
+			destination->integer = 1;
+		else
+			destination->integer = 0;
+	} else if(object[0] == LAND_OP)
+	{
+		return_size = 1;
+		object++;
+
+		integer_size = acpi_eval_object(&n1, state, &object[0]);
+		return_size += integer_size;
+		object += integer_size;
+
+		integer_size = acpi_eval_object(&n2, state, &object[0]);
+		return_size += integer_size;
+
+		destination->type = ACPI_INTEGER;
+
+		if(n1.integer == 0 && n2.integer == 0)
+			destination->integer = 1;
+		else
+			destination->integer = 0;
+	} else if(object[0] == LEQUAL_OP)
+	{
+		return_size = 1;
+		object++;
+
+		integer_size = acpi_eval_object(&n1, state, &object[0]);
+		return_size += integer_size;
+		object += integer_size;
+
+		integer_size = acpi_eval_object(&n2, state, &object[0]);
+		return_size += integer_size;
+
+		destination->type = ACPI_INTEGER;
+
+		if(n1.integer == n2.integer)
+			destination->integer = 1;
+		else
+			destination->integer = 0;
+	} else if(object[0] == LGREATER_OP)
+	{
+		return_size = 1;
+		object++;
+
+		integer_size = acpi_eval_object(&n1, state, &object[0]);
+		return_size += integer_size;
+		object += integer_size;
+
+		integer_size = acpi_eval_object(&n2, state, &object[0]);
+		return_size += integer_size;
+
+		destination->type = ACPI_INTEGER;
+		if(n1.integer > n2.integer)
+			destination->integer = 1;
+		else
+			destination->integer = 0;
+	} else if(object[0] == LLESS_OP)
+	{
+		return_size = 1;
+		object++;
+
+		integer_size = acpi_eval_object(&n1, state, &object[0]);
+		return_size += integer_size;
+		object += integer_size;
+
+		integer_size = acpi_eval_object(&n2, state, &object[0]);
+		return_size += integer_size;
+
+		destination->type = ACPI_INTEGER;
+		if(n1.integer < n2.integer)
+			destination->integer = 1;
+		else
+			destination->integer = 0;
+	} else if(object[0] == LOR_OP)
+	{
+		return_size = 1;
+		object++;
+
+		integer_size = acpi_eval_object(&n1, state, &object[0]);
+		return_size += integer_size;
+		object += integer_size;
+
+		integer_size = acpi_eval_object(&n2, state, &object[0]);
+		return_size += integer_size;
+
+		destination->type = ACPI_INTEGER;
+		if(n1.integer == 0 || n2.integer == 0)
+			destination->integer = 1;
+		else
+			destination->integer = 0;
+	} else if(object[0] == AND_OP)
+	{
+		return_size = 2;
+		object++;
+
+		integer_size = acpi_eval_object(&n1, state, &object[0]);
+		return_size += integer_size;
+		object += integer_size;
+
+		integer_size = acpi_eval_object(&n2, state, &object[0]);
+		return_size += integer_size;
+
+		destination->type = ACPI_INTEGER;
+		destination->integer = n1.integer & n2.integer;
+	} else if(object[0] == ADD_OP)
+	{
+		return_size = 2;
+		object++;
+
+		integer_size = acpi_eval_object(&n1, state, &object[0]);
+		return_size += integer_size;
+		object += integer_size;
+
+		integer_size = acpi_eval_object(&n2, state, &object[0]);
+		return_size += integer_size;
+
+		destination->type = ACPI_INTEGER;
+		destination->integer = n1.integer + n2.integer;
+	} else if(object[0] == OR_OP)
+	{
+		return_size = 2;
+		object++;
+
+		integer_size = acpi_eval_object(&n1, state, &object[0]);
+		return_size += integer_size;
+		object += integer_size;
+
+		integer_size = acpi_eval_object(&n2, state, &object[0]);
+		return_size += integer_size;
+
+		destination->type = ACPI_INTEGER;
+		destination->integer = n1.integer | n2.integer;
+	} else if(object[0] == SUBTRACT_OP)
+	{
+		return_size = 2;
+		object++;
+
+		integer_size = acpi_eval_object(&n1, state, &object[0]);
+		return_size += integer_size;
+		object += integer_size;
+
+		integer_size = acpi_eval_object(&n2, state, &object[0]);
+		return_size += integer_size;
+
+		destination->type = ACPI_INTEGER;
+		destination->integer = n1.integer - n2.integer;
+	} else if(object[0] == NOT_OP)
+	{
+		return_size = 2;
+		object++;
+
+		integer_size = acpi_eval_object(&n1, state, &object[0]);
+		return_size += integer_size;
+
+		destination->type = ACPI_INTEGER;
+		destination->integer = ~n1.integer;
+	} else if(object[0] == XOR_OP)
+	{
+		return_size = 2;
+		object++;
+
+		integer_size = acpi_eval_object(&n1, state, &object[0]);
+		return_size += integer_size;
+		object += integer_size;
+
+		integer_size = acpi_eval_object(&n2, state, &object[0]);
+		return_size += integer_size;
+
+		destination->type = ACPI_INTEGER;
+		destination->integer = n1.integer ^ n2.integer;
+	} else if(object[0] == SHL_OP)
+	{
+		return_size = 2;
+		object++;
+
+		integer_size = acpi_eval_object(&n1, state, &object[0]);
+		return_size += integer_size;
+		object += integer_size;
+
+		integer_size = acpi_eval_object(&n2, state, &object[0]);
+		return_size += integer_size;
+
+		destination->type = ACPI_INTEGER;
+		destination->integer = n1.integer << n2.integer;
+	} else if(object[0] == SHR_OP)
+	{
+		return_size = 2;
+		object++;
+
+		integer_size = acpi_eval_object(&n1, state, &object[0]);
+		return_size += integer_size;
+		object += integer_size;
+
+		integer_size = acpi_eval_object(&n2, state, &object[0]);
+		return_size += integer_size;
+
+		destination->type = ACPI_INTEGER;
+		destination->integer = n1.integer >> n2.integer;
+	} else if(object[0] == EXTOP_PREFIX && object[1] == CONDREF_OP)
+	{
+		return_size = 3;
+		object += 2;
+
+		name_size = acpins_resolve_path(name, &object[0]);
+		return_size += name_size;
+
+		acpi_handle_t *handle = acpi_exec_resolve(name);
+		destination->type = ACPI_INTEGER;
+
+		if(!handle)
+			destination->integer = 0;
+		else
+			destination->integer = 1;
 	} else
 	{
 		acpi_printf("acpi: undefined opcode, sequence: %xb %xb %xb %xb\n", object[0], object[1], object[2], object[3]);
@@ -380,7 +602,39 @@ size_t acpi_eval_object(acpi_object_t *destination, acpi_state_t *state, void *d
 	return return_size;
 }
 
+// acpi_eval(): Returns an object
+// Param:	acpi_object_t *destination - where to store object
+// Param:	char *path - path of object
+// Return:	int - 0 on success
 
+int acpi_eval(acpi_object_t *destination, char *path)
+{
+	acpi_handle_t *handle;
+	handle = acpi_exec_resolve(path);
+	if(!handle)
+		return 1;
+
+	while(handle->type == ACPI_NAMESPACE_ALIAS)
+	{
+		handle = acpins_resolve(handle->alias);
+		if(!handle)
+			return 1;
+	}
+
+	if(handle->type == ACPI_NAMESPACE_NAME)
+	{
+		acpi_copy_object(destination, &handle->object);
+		return 0;
+	} else if(handle->type == ACPI_NAMESPACE_METHOD)
+	{
+		acpi_state_t state;
+		acpi_memset(&state, 0, sizeof(acpi_state_t));
+		acpi_strcpy(state.name, path);
+		return acpi_exec_method(&state, destination);
+	}
+
+	return 1;
+}
 
 
 
