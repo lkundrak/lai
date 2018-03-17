@@ -224,8 +224,7 @@ size_t acpi_eval_object(acpi_object_t *destination, acpi_state_t *state, void *d
 		handle = acpi_exec_resolve(name);
 		if(!handle)
 		{
-			acpi_printf("acpi: undefined reference %s\n", name);
-			while(1);
+			acpi_panic("acpi: undefined reference %s\n", name);
 		}
 
 		// could be a named object
@@ -245,8 +244,7 @@ size_t acpi_eval_object(acpi_object_t *destination, acpi_state_t *state, void *d
 			return_size += name_size;
 		} else
 		{
-			acpi_printf("acpi: undefined behavior when path doesn't resolve into valid data or code.\n");
-			while(1);
+			acpi_panic("acpi: undefined behavior when path doesn't resolve into valid data or code.\n");
 		}
 	} else if(object[0] == SIZEOF_OP)
 	{
@@ -314,14 +312,12 @@ size_t acpi_eval_object(acpi_object_t *destination, acpi_state_t *state, void *d
 			}
 		} else if(acpi_is_name(object[0]))
 		{
-			acpi_printf("TO-DO: Implement SizeOf for namespec\n");
-			while(1);
+			acpi_panic("TO-DO: Implement SizeOf for namespec\n");
 			/*sizeof_object = acpi_malloc(sizeof(acpi_object_t));
 			return_size += acpi_eval_object(sizeof_object, state, &object[0]);*/
 		} else
 		{
-			acpi_printf("acpi: undefined object for SizeOf\n");
-			while(1);
+			acpi_panic("acpi: undefined object for SizeOf\n");
 		}
 
 		// now determine the actual size
@@ -338,8 +334,7 @@ size_t acpi_eval_object(acpi_object_t *destination, acpi_state_t *state, void *d
 
 		else
 		{
-			acpi_printf("acpi: can't perform SizeOf on object type %d\n", sizeof_object->type);
-			while(1);
+			acpi_panic("acpi: can't perform SizeOf on object type %d\n", sizeof_object->type);
 		}
 	} else if(object[0] == DEREF_OP)
 	{
@@ -374,8 +369,7 @@ size_t acpi_eval_object(acpi_object_t *destination, acpi_state_t *state, void *d
 			acpi_copy_object(destination, &ref.package[index.integer]);
 		} else
 		{
-			acpi_printf("TO-DO: More Index() objects\n");
-			while(1);
+			acpi_panic("TO-DO: More Index() objects\n");
 		}
 	} else if(object[0] == LNOT_OP)
 	{
@@ -643,8 +637,7 @@ size_t acpi_eval_object(acpi_object_t *destination, acpi_state_t *state, void *d
 		destination->integer = n1.integer / n2.integer;
 	} else
 	{
-		acpi_printf("acpi: undefined opcode, sequence: %xb %xb %xb %xb\n", object[0], object[1], object[2], object[3]);
-		while(1);
+		acpi_panic("acpi: undefined opcode, sequence: %xb %xb %xb %xb\n", object[0], object[1], object[2], object[3]);
 	}
 
 	return return_size;

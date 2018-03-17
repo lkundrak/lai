@@ -174,8 +174,7 @@ int acpi_exec(uint8_t *method, size_t size, acpi_state_t *state, acpi_object_t *
 				i += acpi_exec_sleep(&method[i], state);
 				break;
 			default:
-				acpi_printf("acpi: undefined opcode in control method %s, sequence %xb %xb %xb %xb\n", state->name, method[i], method[i+1], method[i+2], method[i+3]);
-				while(1);
+				acpi_panic("acpi: undefined opcode in control method %s, sequence %xb %xb %xb %xb\n", state->name, method[i], method[i+1], method[i+2], method[i+3]);
 			}
 			break;
 
@@ -292,8 +291,7 @@ int acpi_exec(uint8_t *method, size_t size, acpi_state_t *state, acpi_object_t *
 			break;
 
 		default:
-			acpi_printf("acpi: undefined opcode in control method %s, sequence %xb %xb %xb %xb\n", state->name, method[i], method[i+1], method[i+2], method[i+3]);
-			while(1);
+			acpi_panic("acpi: undefined opcode in control method %s, sequence %xb %xb %xb %xb\n", state->name, method[i], method[i+1], method[i+2], method[i+3]);
 		}
 	}
 
@@ -330,8 +328,7 @@ size_t acpi_methodinvoke(void *data, acpi_state_t *old_state, acpi_object_t *met
 	method = acpi_exec_resolve(state->name);
 	if(!method)
 	{
-		acpi_printf("acpi: undefined MethodInvokation %s\n", state->name);
-		while(1);
+		acpi_panic("acpi: undefined MethodInvokation %s\n", state->name);
 	}
 
 	uint8_t argc = method->method_flags & METHOD_ARGC_MASK;

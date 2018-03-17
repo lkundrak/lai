@@ -255,10 +255,7 @@ extern char acpins_path[];
 size_t acpi_namespace_entries;
 
 // OS-specific functions
-void acpi_init();
-int acpi_checksum(void *);
 void *acpi_scan(char *, size_t);
-void acpi_load_fadt();
 void *acpi_memcpy(void *, const void *, size_t);
 void *acpi_memmove(void *, const void *, size_t);
 void *acpi_malloc(size_t);

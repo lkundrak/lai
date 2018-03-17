@@ -290,8 +290,7 @@ void acpins_register_scope(uint8_t *data, size_t size)
 				break;
 
 			default:
-				acpi_printf("acpi: undefined opcode, sequence: %xb %xb %xb %xb\n", data[count], data[count+1], data[count+2], data[count+3]);
-				while(1);
+				acpi_panic("acpi: undefined opcode, sequence: %xb %xb %xb %xb\n", data[count], data[count+1], data[count+2], data[count+3]);
 			}
 			break;
 
@@ -315,8 +314,7 @@ void acpins_register_scope(uint8_t *data, size_t size)
 			break;
 
 		default:
-			acpi_printf("acpi: undefined opcode, sequence: %xb %xb %xb %xb\n", data[count], data[count+1], data[count+2], data[count+3]);
-			while(1);
+			acpi_panic("acpi: undefined opcode, sequence: %xb %xb %xb %xb\n", data[count], data[count+1], data[count+2], data[count+3]);
 		}
 	}
 }
@@ -387,8 +385,7 @@ size_t acpins_create_opregion(void *data)
 	integer = object.integer;
 	if(integer_size == 0)
 	{
-		acpi_printf("acpi: undefined opcode, sequence: %xb %xb %xb %xb\n", opregion[size], opregion[size+1], opregion[size+2], opregion[size+3]);
-		while(1);
+		acpi_panic("acpi: undefined opcode, sequence: %xb %xb %xb %xb\n", opregion[size], opregion[size+1], opregion[size+2], opregion[size+3]);
 	}
 
 	acpi_namespace[acpi_namespace_entries].op_base = integer;
@@ -397,8 +394,7 @@ size_t acpins_create_opregion(void *data)
 	integer_size = acpi_eval_integer(&opregion[size], &integer);
 	if(integer_size == 0)
 	{
-		acpi_printf("acpi: undefined opcode, sequence: %xb %xb %xb %xb\n", opregion[size], opregion[size+1], opregion[size+2], opregion[size+3]);
-		while(1);
+		acpi_panic("acpi: undefined opcode, sequence: %xb %xb %xb %xb\n", opregion[size], opregion[size+1], opregion[size+2], opregion[size+3]);
 	}
 
 	acpi_namespace[acpi_namespace_entries].op_length = integer;
@@ -424,8 +420,7 @@ size_t acpins_create_opregion(void *data)
 		break;
 
 	default:
-		acpi_printf("unsupported address space ID 0x%xb\n", acpi_namespace[acpi_namespace_entries].op_address_space);
-		while(1);
+		acpi_panic("unsupported address space ID 0x%xb\n", acpi_namespace[acpi_namespace_entries].op_address_space);
 	}*/
 
 	acpins_increment_namespace();
@@ -740,8 +735,7 @@ size_t acpins_create_name(void *data)
 		acpi_namespace[acpi_namespace_entries].object.string = (char*)&name[1];
 	} else
 	{
-		acpi_printf("acpi: undefined opcode in Name(), sequence: %xb %xb %xb %xb\n", name[0], name[1], name[2], name[3]);
-		while(1);
+		acpi_panic("acpi: undefined opcode in Name(), sequence: %xb %xb %xb %xb\n", name[0], name[1], name[2], name[3]);
 	}
 
 	/*if(acpi_namespace[acpi_namespace_entries].object.type == ACPI_INTEGER)
@@ -998,8 +992,7 @@ size_t acpins_create_package(acpi_object_t *destination, void *data)
 		} else
 		{
 			// Undefined here
-			acpi_printf("acpi: undefined opcode in Package(), sequence: %xb %xb %xb %xb\n", package[j], package[j+1], package[j+2], package[j+3]);
-			while(1);
+			acpi_panic("acpi: undefined opcode in Package(), sequence: %xb %xb %xb %xb\n", package[j], package[j+1], package[j+2], package[j+3]);
 		}
 	}
 

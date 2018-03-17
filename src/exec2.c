@@ -167,8 +167,7 @@ size_t acpi_write_object(void *data, acpi_object_t *source, acpi_state_t *state)
 		acpi_handle_t *handle = acpi_exec_resolve(name);
 		if(!handle)
 		{
-			acpi_printf("acpi: undefined reference %s\n", name);
-			while(1);
+			acpi_panic("acpi: undefined reference %s\n", name);
 		}
 
 		if(handle->type == ACPI_NAMESPACE_NAME)
@@ -177,8 +176,7 @@ size_t acpi_write_object(void *data, acpi_object_t *source, acpi_state_t *state)
 			acpi_write_opregion(handle, source);
 		else
 		{
-			acpi_printf("acpi: NameSpec destination is not name or field.\n");
-			while(1);
+			acpi_panic("acpi: NameSpec destination is not name or field.\n");
 		}
 
 		return name_size;
@@ -204,14 +202,11 @@ size_t acpi_write_object(void *data, acpi_object_t *source, acpi_state_t *state)
 			return return_size;
 		} else
 		{
-			acpi_printf("acpi: cannot write Index() to non-package object: %d\n", object.type);
-			acpi_printf("acpi: undefined opcode, sequence %xb %xb %xb %xb, method %s\n", dest[0], dest[1], dest[2], dest[3], state->name);
-			while(1);
+			acpi_panic("acpi: cannot write Index() to non-package object: %d\n", object.type);
 		}
 	}
 
-	acpi_printf("acpi: undefined opcode, sequence %xb %xb %xb %xb\n", dest[0], dest[1], dest[2], dest[3]);
-	while(1);
+	acpi_panic("acpi: undefined opcode, sequence %xb %xb %xb %xb\n", dest[0], dest[1], dest[2], dest[3]);
 }
 
 // acpi_exec_store(): Executes a Store() opcode

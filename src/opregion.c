@@ -30,8 +30,7 @@ void acpi_read_opregion(acpi_object_t *destination, acpi_handle_t *field)
 	else if(field->type == ACPI_NAMESPACE_INDEXFIELD)
 		return acpi_read_indexfield(destination, field);
 
-	acpi_printf("acpi: undefined field read: %s\n", field->path);
-	while(1);
+	acpi_panic("acpi: undefined field read: %s\n", field->path);
 }
 
 // acpi_write_opregion(): Writes to a OpRegion Field or IndexField
@@ -47,8 +46,7 @@ void acpi_write_opregion(acpi_handle_t *field, acpi_object_t *source)
 	else if(field->type == ACPI_NAMESPACE_INDEXFIELD)
 		return acpi_write_indexfield(field, source);
 
-	acpi_printf("acpi: undefined field write: %s\n", field->path);
-	while(1);
+	acpi_panic("acpi: undefined field write: %s\n", field->path);
 }
 
 // acpi_read_field(): Reads from a normal field
@@ -62,8 +60,7 @@ void acpi_read_field(acpi_object_t *destination, acpi_handle_t *field)
 	opregion = acpins_resolve(field->field_opregion);
 	if(!opregion)
 	{
-		acpi_printf("acpi: OpRegion %s doesn't exist.\n", field->field_opregion);
-		while(1);
+		acpi_panic("acpi: OpRegion %s doesn't exist.\n", field->field_opregion);
 	}
 
 	uint64_t offset, value, mask;
@@ -105,8 +102,7 @@ void acpi_read_field(acpi_object_t *destination, acpi_handle_t *field)
 			break;
 
 		default:
-			acpi_printf("acpi: undefined field flags 0x%xb: %s\n", field->field_flags, field->path);
-			while(1);
+			acpi_panic("acpi: undefined field flags 0x%xb: %s\n", field->field_flags, field->path);
 		}
 	} else
 	{
@@ -134,8 +130,7 @@ void acpi_read_field(acpi_object_t *destination, acpi_handle_t *field)
 			//acpi_printf("acpi: read 0x%xd from I/O port 0x%xw, field %s\n", (uint32_t)value, opregion->op_base + offset, field->path);
 			break;
 		default:
-			//acpi_printf("acpi: undefined field flags 0x%xb: %s\n", field->field_flags, field->path);
-			while(1);
+			acpi_panic("acpi: undefined field flags 0x%xb: %s\n", field->field_flags, field->path);
 		}
 	} else if(opregion->op_address_space == OPREGION_MEMORY)
 	{
@@ -170,8 +165,7 @@ void acpi_read_field(acpi_object_t *destination, acpi_handle_t *field)
 			//acpi_printf("acpi: read 0x%xq from MMIO 0x%xq, field %s\n", value, opregion->op_base + offset, field->path);
 			break;
 		default:
-			acpi_printf("acpi: undefined field flags 0x%xb: %s\n", field->field_flags, field->path);
-			while(1);
+			acpi_panic("acpi: undefined field flags 0x%xb: %s\n", field->field_flags, field->path);
 		}
 	} else if(opregion->op_address_space == OPREGION_PCI)
 	{
@@ -205,8 +199,7 @@ void acpi_read_field(acpi_object_t *destination, acpi_handle_t *field)
 		value >>= bit_offset;
 	} else
 	{
-		acpi_printf("acpi: undefined opregion address space: %d\n", opregion->op_address_space);
-		while(1);
+		acpi_panic("acpi: undefined opregion address space: %d\n", opregion->op_address_space);
 	}
 
 	destination->type = ACPI_INTEGER;
@@ -225,8 +218,7 @@ void acpi_write_field(acpi_handle_t *field, acpi_object_t *source)
 	opregion = acpins_resolve(field->field_opregion);
 	if(!opregion)
 	{
-		acpi_printf("acpi: OpRegion %s doesn't exist.\n", field->field_opregion);
-		while(1);
+		acpi_panic("acpi: OpRegion %s doesn't exist.\n", field->field_opregion);
 	}
 
 	uint64_t offset, value, mask;
@@ -268,8 +260,7 @@ void acpi_write_field(acpi_handle_t *field, acpi_object_t *source)
 			break;
 
 		default:
-			acpi_printf("acpi: undefined field flags 0x%xb: %s\n", field->field_flags, field->path);
-			while(1);
+			acpi_panic("acpi: undefined field flags 0x%xb: %s\n", field->field_flags, field->path);
 		}
 	} else
 	{
@@ -294,8 +285,7 @@ void acpi_write_field(acpi_handle_t *field, acpi_object_t *source)
 			value = (uint64_t)acpi_ind(opregion->op_base + offset);
 			break;
 		default:
-			acpi_printf("acpi: undefined field flags 0x%xb: %s\n", field->field_flags, field->path);
-			while(1);
+			acpi_panic("acpi: undefined field flags 0x%xb: %s\n", field->field_flags, field->path);
 		}
 	} else if(opregion->op_address_space == OPREGION_MEMORY)
 	{
@@ -326,8 +316,7 @@ void acpi_write_field(acpi_handle_t *field, acpi_object_t *source)
 			value = mmio_qword[0];
 			break;
 		default:
-			acpi_printf("acpi: undefined field flags 0x%xb: %s\n", field->field_flags, field->path);
-			while(1);
+			acpi_panic("acpi: undefined field flags 0x%xb: %s\n", field->field_flags, field->path);
 		}
 	} else if(opregion->op_address_space == OPREGION_PCI)
 	{
@@ -358,8 +347,7 @@ void acpi_write_field(acpi_handle_t *field, acpi_object_t *source)
 		value = acpi_pci_read((uint8_t)bus_number.integer, (uint8_t)(address_number.integer >> 16) & 0xFF, (uint8_t)(address_number.integer & 0xFF), (offset & 0xFFFC) + opregion->op_base);
 	} else
 	{
-		acpi_printf("acpi: undefined opregion address space: %d\n", opregion->op_address_space);
-		while(1);
+		acpi_panic("acpi: undefined opregion address space: %d\n", opregion->op_address_space);
 	}
 
 	// now determine how we need to write to the field
@@ -398,8 +386,7 @@ void acpi_write_field(acpi_handle_t *field, acpi_object_t *source)
 			//acpi_printf("acpi: wrote 0x%xd to I/O port 0x%xw\n", (uint32_t)value, opregion->op_base + offset);
 			break;
 		default:
-			acpi_printf("acpi: undefined field flags 0x%xb: %s\n", field->field_flags, field->path);
-			while(1);
+			acpi_panic("acpi: undefined field flags 0x%xb: %s\n", field->field_flags, field->path);
 		}
 
 		// iowait() equivalent
@@ -438,16 +425,14 @@ void acpi_write_field(acpi_handle_t *field, acpi_object_t *source)
 			//acpi_printf("acpi: wrote 0x%xq to MMIO address 0x%xq\n", value, opregion->op_base + offset);
 			break;
 		default:
-			acpi_printf("acpi: undefined field flags 0x%xb\n", field->field_flags);
-			while(1);
+			acpi_panic("acpi: undefined field flags 0x%xb\n", field->field_flags);
 		}
 	} else if(opregion->op_address_space == OPREGION_PCI)
 	{
 		acpi_pci_write((uint8_t)bus_number.integer, (uint8_t)(address_number.integer >> 16) & 0xFF, (uint8_t)(address_number.integer & 0xFF), (offset & 0xFFFC) + opregion->op_base, (uint32_t)value);
 	} else
 	{
-		acpi_printf("acpi: undefined opregion address space: %d\n", opregion->op_address_space);
-		while(1);
+		acpi_panic("acpi: undefined opregion address space: %d\n", opregion->op_address_space);
 	}
 }
 
@@ -462,8 +447,7 @@ void acpi_read_indexfield(acpi_object_t *destination, acpi_handle_t *indexfield)
 	field = acpins_resolve(indexfield->indexfield_index);
 	if(!field)
 	{
-		acpi_printf("acpi: undefined reference %s\n", indexfield->indexfield_index);
-		while(1);
+		acpi_panic("acpi: undefined reference %s\n", indexfield->indexfield_index);
 	}
 
 	acpi_object_t index;
@@ -475,8 +459,7 @@ void acpi_read_indexfield(acpi_object_t *destination, acpi_handle_t *indexfield)
 	field = acpins_resolve(indexfield->indexfield_data);
 	if(!field)
 	{
-		acpi_printf("acpi: undefined reference %s\n", indexfield->indexfield_data);
-		while(1);
+		acpi_panic("acpi: undefined reference %s\n", indexfield->indexfield_data);
 	}
 
 	acpi_read_field(destination, field);	// the data register
@@ -493,8 +476,7 @@ void acpi_write_indexfield(acpi_handle_t *indexfield, acpi_object_t *source)
 	field = acpins_resolve(indexfield->indexfield_index);
 	if(!field)
 	{
-		acpi_printf("acpi: undefined reference %s\n", indexfield->indexfield_index);
-		while(1);
+		acpi_panic("acpi: undefined reference %s\n", indexfield->indexfield_index);
 	}
 
 	acpi_object_t index;
@@ -506,8 +488,7 @@ void acpi_write_indexfield(acpi_handle_t *indexfield, acpi_object_t *source)
 	field = acpins_resolve(indexfield->indexfield_data);
 	if(!field)
 	{
-		acpi_printf("acpi: undefined reference %s\n", indexfield->indexfield_data);
-		while(1);
+		acpi_panic("acpi: undefined reference %s\n", indexfield->indexfield_data);
 	}
 
 	acpi_write_field(field, source);	// the data register
