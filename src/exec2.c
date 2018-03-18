@@ -174,9 +174,11 @@ size_t acpi_write_object(void *data, acpi_object_t *source, acpi_state_t *state)
 			acpi_copy_object(&handle->object, source);
 		else if(handle->type == ACPI_NAMESPACE_FIELD || handle->type == ACPI_NAMESPACE_INDEXFIELD)
 			acpi_write_opregion(handle, source);
+		else if(handle->type == ACPI_NAMESPACE_BUFFER_FIELD)
+			acpi_write_buffer(handle, source);
 		else
 		{
-			acpi_panic("acpi: NameSpec destination is not name or field.\n");
+			acpi_panic("acpi: NameSpec destination is not a writeable object.\n");
 		}
 
 		return name_size;
@@ -207,6 +209,55 @@ size_t acpi_write_object(void *data, acpi_object_t *source, acpi_state_t *state)
 	}
 
 	acpi_panic("acpi: undefined opcode, sequence %xb %xb %xb %xb\n", dest[0], dest[1], dest[2], dest[3]);
+}
+
+// acpi_write_buffer(): Writes to a Buffer Field
+// Param:	acpi_handle_t *handle - handle of buffer field
+// Param:	acpi_object_t *source - object to write
+// Return:	Nothing
+
+void acpi_write_buffer(acpi_handle_t *handle, acpi_object_t *source)
+{
+	acpi_handle_t *buffer_handle;
+	buffer_handle = acpins_resolve(handle->buffer);
+
+	if(!buffer_handle)
+		acpi_printf("acpi: undefined reference %s\n", handle->buffer);
+
+	uint64_t value = source->integer;
+
+	uint64_t offset = handle->buffer_offset / 8;
+	uint64_t bitshift = handle->buffer_offset % 8;
+
+	value <<= bitshift;
+
+	uint64_t mask = 1;
+	mask <<= bitshift;
+	mask--;
+	mask <<= bitshift;
+
+	uint8_t *byte = (uint8_t*)(buffer_handle->object.buffer + offset);
+	uint16_t *word = (uint16_t*)(buffer_handle->object.buffer + offset);
+	uint32_t *dword = (uint32_t*)(buffer_handle->object.buffer + offset);
+	uint64_t *qword = (uint64_t*)(buffer_handle->object.buffer + offset);
+
+	if(handle->buffer_size <= 8)
+	{
+		byte[0] &= (uint8_t)mask;
+		byte[0] |= (uint8_t)value;
+	} else if(handle->buffer_size <= 16)
+	{
+		word[0] &= (uint16_t)mask;
+		word[0] |= (uint16_t)value;
+	} else if(handle->buffer_size <= 32)
+	{
+		dword[0] &= (uint32_t)mask;
+		dword[0] |= (uint32_t)value;
+	} else if(handle->buffer_size <= 64)
+	{
+		qword[0] &= mask;
+		qword[0] |= value;
+	}
 }
 
 // acpi_exec_store(): Executes a Store() opcode

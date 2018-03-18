@@ -300,7 +300,10 @@ size_t acpins_create_mutex(void *);
 size_t acpins_create_indexfield(void *);
 size_t acpins_create_package(acpi_object_t *, void *);
 size_t acpins_create_processor(void *);
+size_t acpins_create_bytefield(void *);
 size_t acpins_create_wordfield(void *);
+size_t acpins_create_dwordfield(void *);
+size_t acpins_create_qwordfield(void *);
 acpi_handle_t *acpins_resolve(char *);
 acpi_handle_t *acpins_get_device(size_t);
 acpi_handle_t *acpins_get_deviceid(size_t, acpi_object_t *);
@@ -335,6 +338,7 @@ uint32_t acpi_bswap32(uint32_t);
 uint8_t acpi_char_to_hex(char);
 size_t acpi_exec_multiply(void *, acpi_state_t *);
 size_t acpi_exec_divide(void *, acpi_state_t *);
+void acpi_write_buffer(acpi_handle_t *, acpi_object_t *);
 
 // Generic Functions
 int acpi_enter_sleep(uint8_t);

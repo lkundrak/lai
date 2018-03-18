@@ -260,8 +260,17 @@ void acpins_register_scope(uint8_t *data, size_t size)
 			count += pkgsize;
 			break;
 
+		case BYTEFIELD_OP:
+			count += acpins_create_bytefield(&data[count]);
+			break;
 		case WORDFIELD_OP:
 			count += acpins_create_wordfield(&data[count]);
+			break;
+		case DWORDFIELD_OP:
+			count += acpins_create_dwordfield(&data[count]);
+			break;
+		case QWORDFIELD_OP:
+			count += acpins_create_qwordfield(&data[count]);
 			break;
 
 		case EXTOP_PREFIX:
@@ -718,6 +727,8 @@ size_t acpins_create_name(void *data)
 	uint64_t integer;
 	size_t integer_size = acpi_eval_integer(name, &integer);
 	size_t pkgsize;
+	acpi_object_t object;
+	size_t object_size;
 
 	if(integer_size != 0)
 	{
@@ -728,7 +739,10 @@ size_t acpins_create_name(void *data)
 		acpi_namespace[acpi_namespace_entries].object.type = ACPI_BUFFER;
 		pkgsize = acpi_parse_pkgsize(&name[1], &acpi_namespace[acpi_namespace_entries].object.buffer_size);
 		acpi_namespace[acpi_namespace_entries].object.buffer = &name[0] + pkgsize + 1;
-		acpi_namespace[acpi_namespace_entries].object.buffer_size -= pkgsize;
+
+		object_size = acpi_eval_object(&object, &acpins_state, acpi_namespace[acpi_namespace_entries].object.buffer);
+		acpi_namespace[acpi_namespace_entries].object.buffer += object_size;
+		acpi_namespace[acpi_namespace_entries].object.buffer_size = object.integer;
 	} else if(name[0] == STRINGPREFIX)
 	{
 		acpi_namespace[acpi_namespace_entries].object.type = ACPI_STRING;
@@ -1026,6 +1040,42 @@ size_t acpins_create_processor(void *data)
 	return size + 2;
 }
 
+// acpins_create_bytefield(): Creates a ByteField object for a buffer in the namespace
+// Param:	void *data - pointer to data
+// Return:	size_t - total size in bytes, for skipping
+
+size_t acpins_create_bytefield(void *data)
+{
+	uint8_t *bytefield = (uint8_t*)data;
+	bytefield++;		// skip BYTEFIELD_OP
+	size_t return_size = 1;
+
+	acpi_namespace[acpi_namespace_entries].type = ACPI_NAMESPACE_BUFFER_FIELD;
+
+	// buffer name
+	size_t name_size;
+	name_size = acpins_resolve_path(acpi_namespace[acpi_namespace_entries].buffer, bytefield);
+
+	return_size += name_size;
+	bytefield += name_size;
+
+	size_t integer_size;
+	uint64_t integer;
+	integer_size = acpi_eval_integer(bytefield, &integer);
+
+	acpi_namespace[acpi_namespace_entries].buffer_offset = integer * 8;
+	acpi_namespace[acpi_namespace_entries].buffer_size = 8;
+
+	return_size += integer_size;
+	bytefield += integer_size;
+
+	name_size = acpins_resolve_path(acpi_namespace[acpi_namespace_entries].path, bytefield);
+
+	acpins_increment_namespace();
+	return_size += name_size;
+	return return_size;
+}
+
 // acpins_create_wordfield(): Creates a WordField object for a buffer in the namespace
 // Param:	void *data - pointer to data
 // Return:	size_t - total size in bytes, for skipping
@@ -1034,8 +1084,9 @@ size_t acpins_create_wordfield(void *data)
 {
 	uint8_t *wordfield = (uint8_t*)data;
 	wordfield++;		// skip WORDFIELD_OP
-
 	size_t return_size = 1;
+
+	acpi_namespace[acpi_namespace_entries].type = ACPI_NAMESPACE_BUFFER_FIELD;
 
 	// buffer name
 	size_t name_size;
@@ -1052,11 +1103,83 @@ size_t acpins_create_wordfield(void *data)
 	acpi_namespace[acpi_namespace_entries].buffer_size = 16;	// bits
 
 	return_size += integer_size;
-	wordfield += name_size;
+	wordfield += integer_size;
 
 	name_size = acpins_resolve_path(acpi_namespace[acpi_namespace_entries].path, wordfield);
 
 	//acpi_printf("acpi: field %s for buffer %s, offset %d size %d bits\n", acpi_namespace[acpi_namespace_entries].path, acpi_namespace[acpi_namespace_entries].buffer, acpi_namespace[acpi_namespace_entries].buffer_offset, acpi_namespace[acpi_namespace_entries].buffer_size);
+
+	acpins_increment_namespace();
+	return_size += name_size;
+	return return_size;
+}
+
+// acpins_create_dwordfield(): Creates a DwordField object for a buffer in the namespace
+// Param:	void *data - pointer to data
+// Return:	size_t - total size in bytes, for skipping
+
+size_t acpins_create_dwordfield(void *data)
+{
+	uint8_t *dwordfield = (uint8_t*)data;
+	dwordfield++;		// skip DWORDFIELD_OP
+	size_t return_size = 1;
+
+	acpi_namespace[acpi_namespace_entries].type = ACPI_NAMESPACE_BUFFER_FIELD;
+
+	// buffer name
+	size_t name_size;
+	name_size = acpins_resolve_path(acpi_namespace[acpi_namespace_entries].buffer, dwordfield);
+
+	return_size += name_size;
+	dwordfield += name_size;
+
+	size_t integer_size;
+	uint64_t integer;
+	integer_size = acpi_eval_integer(dwordfield, &integer);
+
+	acpi_namespace[acpi_namespace_entries].buffer_offset = integer * 8;
+	acpi_namespace[acpi_namespace_entries].buffer_size = 32;
+
+	return_size += integer_size;
+	dwordfield += integer_size;
+
+	name_size = acpins_resolve_path(acpi_namespace[acpi_namespace_entries].path, dwordfield);
+
+	acpins_increment_namespace();
+	return_size += name_size;
+	return return_size;
+}
+
+// acpins_create_qwordfield(): Creates a QwordField object for a buffer in the namespace
+// Param:	void *data - pointer to data
+// Return:	size_t - total size in bytes, for skipping
+
+size_t acpins_create_qwordfield(void *data)
+{
+	uint8_t *qwordfield = (uint8_t*)data;
+	qwordfield++;		// skip QWORDFIELD_OP
+	size_t return_size = 1;
+
+	acpi_namespace[acpi_namespace_entries].type = ACPI_NAMESPACE_BUFFER_FIELD;
+
+	// buffer name
+	size_t name_size;
+	name_size = acpins_resolve_path(acpi_namespace[acpi_namespace_entries].buffer, qwordfield);
+
+	return_size += name_size;
+	qwordfield += name_size;
+
+	size_t integer_size;
+	uint64_t integer;
+	integer_size = acpi_eval_integer(qwordfield, &integer);
+
+	acpi_namespace[acpi_namespace_entries].buffer_offset = integer * 8;
+	acpi_namespace[acpi_namespace_entries].buffer_size = 64;
+
+	return_size += integer_size;
+	qwordfield += integer_size;
+
+	name_size = acpins_resolve_path(acpi_namespace[acpi_namespace_entries].path, qwordfield);
 
 	acpins_increment_namespace();
 	return_size += name_size;
@@ -1082,6 +1205,8 @@ acpi_handle_t *acpins_resolve(char *path)
 			else
 				i++;
 		}
+
+		return NULL;
 	} else			// 4-char name here
 	{
 		while(i < acpi_namespace_entries)
@@ -1092,10 +1217,9 @@ acpi_handle_t *acpins_resolve(char *path)
 			else
 				i++;
 		}
-	}
 
-	//acpi_printf("acpi: namespace object %s doesn't exist.\n", path);
-	return NULL;
+		return NULL;
+	}
 }
 
 // acpins_get_device(): Returns a device by its index
