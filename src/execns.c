@@ -19,7 +19,7 @@ size_t acpi_exec_name(void *data, acpi_state_t *state)
 	uint8_t *name = (uint8_t*)data;
 	name++;			// skip over NAME_OP
 
-	char path[512];
+	char path[ACPI_MAX_NAME];
 	size_t size = acpins_resolve_path(path, name);
 
 	acpi_handle_t *handle;

@@ -9,11 +9,13 @@
 #include <lai_system.h>
 #include "aml_opcodes.h"
 
+#define ACPI_MAX_NAME			64
+
 #define ACPI_GAS_MMIO			0
 #define ACPI_GAS_IO			1
 #define ACPI_GAS_PCI			2
 
-#define ACPI_MAX_NAMESPACE_ENTRIES	512	// realloc()'d, to save memory
+#define ACPI_MAX_NAMESPACE_ENTRIES	ACPI_MAX_NAME	// realloc()'d, to save memory
 #define ACPI_MAX_PACKAGE_ENTRIES	256	// for Package() because the size is 8 bits, VarPackage() is unlimited
 
 #define ACPI_NAMESPACE_NAME		1
@@ -182,17 +184,17 @@ typedef struct acpi_object_t
 	size_t buffer_size;		// for Buffer(), size in bytes
 	void *buffer;			// for Buffer(), actual bytes
 
-	char name[512];			// for Name References
+	char name[ACPI_MAX_NAME];	// for Name References
 } acpi_object_t;
 
 typedef struct acpi_handle_t
 {
-	char path[512];			// full path of object
+	char path[ACPI_MAX_NAME];	// full path of object
 	int type;
 	void *pointer;			// valid for scopes, methods, etc.
 	size_t size;			// valid for scopes, methods, etc.
 
-	char alias[512];		// for Alias() only
+	char alias[ACPI_MAX_NAME];	// for Alias() only
 	acpi_object_t object;		// for Name()
 
 	uint8_t op_address_space;	// for OpRegions only
@@ -202,13 +204,13 @@ typedef struct acpi_handle_t
 	uint64_t field_offset;		// for Fields only, in bits
 	uint8_t field_size;		// for Fields only, in bits
 	uint8_t field_flags;		// for Fields only
-	char field_opregion[512];	// for Fields only
+	char field_opregion[ACPI_MAX_NAME];	// for Fields only
 
 	uint8_t method_flags;		// for Methods only, includes ARG_COUNT in lowest three bits
 
 	uint64_t indexfield_offset;	// for IndexFields, in bits
-	char indexfield_index[512];	// for IndexFields
-	char indexfield_data[512];	// for IndexFields
+	char indexfield_index[ACPI_MAX_NAME];	// for IndexFields
+	char indexfield_data[ACPI_MAX_NAME];	// for IndexFields
 	uint8_t indexfield_flags;	// for IndexFields
 	uint8_t indexfield_size;	// for IndexFields
 
@@ -216,7 +218,7 @@ typedef struct acpi_handle_t
 
 	uint8_t cpu_id;			// for Processor
 
-	char buffer[512];		// for Buffer field
+	char buffer[ACPI_MAX_NAME];		// for Buffer field
 	uint64_t buffer_offset;		// for Buffer field, in bits
 	uint64_t buffer_size;		// for Buffer field, in bits
 } acpi_handle_t;
@@ -231,7 +233,7 @@ typedef struct acpi_condition_t
 
 typedef struct acpi_state_t
 {
-	char name[512];
+	char name[ACPI_MAX_NAME];
 	acpi_object_t arg[7];
 	acpi_object_t local[8];
 

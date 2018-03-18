@@ -15,7 +15,7 @@ size_t acpi_acpins_allocation = 0;
 size_t acpi_acpins_size = 0;
 size_t acpi_acpins_count = 0;
 extern char aml_test[];
-char acpins_path[512];
+char acpins_path[ACPI_MAX_NAME];
 
 acpi_handle_t *acpi_namespace;
 size_t acpi_namespace_entries = 0;
@@ -35,7 +35,7 @@ size_t acpins_resolve_path(char *fullpath, uint8_t *path)
 	size_t multi_count = 0;
 	size_t current_count = 0;
 
-	acpi_memset(fullpath, 0, 512);
+	acpi_memset(fullpath, 0, ACPI_MAX_NAME);
 
 	if(path[0] == ROOT_CHAR)
 	{
@@ -122,7 +122,7 @@ void acpins_increment_namespace()
 
 void acpi_create_namespace(void *dsdt)
 {
-	acpi_memset(acpins_path, 0, 512);
+	acpi_memset(acpins_path, 0, ACPI_MAX_NAME);
 	acpins_path[0] = ROOT_CHAR;
 
 	acpi_acpins_code = acpi_malloc(CODE_WINDOW);
@@ -347,7 +347,7 @@ size_t acpins_create_scope(void *data)
 	//acpi_printf("acpi: scope %s, size %d bytes\n", acpi_namespace[acpi_namespace_entries].path, size);
 
 	// store the new current path
-	char current_path[512];
+	char current_path[ACPI_MAX_NAME];
 	acpi_strcpy(current_path, acpins_path);
 
 	// and update the path
@@ -453,7 +453,7 @@ size_t acpins_create_field(void *data)
 
 	// determine name of opregion
 	acpi_handle_t *opregion;
-	char opregion_name[512];
+	char opregion_name[ACPI_MAX_NAME];
 	size_t name_size = 0;
 
 	name_size = acpins_resolve_path(opregion_name, field);
@@ -633,7 +633,7 @@ size_t acpins_create_device(void *data)
 	//acpi_printf("acpi: device scope %s, size %d bytes\n", acpi_namespace[acpi_namespace_entries].path, size);
 
 	// store the new current path
-	char current_path[512];
+	char current_path[ACPI_MAX_NAME];
 	acpi_strcpy(current_path, acpins_path);
 
 	// and update the path
@@ -674,7 +674,7 @@ size_t acpins_create_thermalzone(void *data)
 	//acpi_printf("acpi: thermal zone %s, size %d bytes\n", acpi_namespace[acpi_namespace_entries].path, size);
 
 	// store the new current path
-	char current_path[512];
+	char current_path[ACPI_MAX_NAME];
 	acpi_strcpy(current_path, acpins_path);
 
 	// and update the path
@@ -827,9 +827,9 @@ size_t acpins_create_indexfield(void *data)
 	indexfield += pkgsize;
 
 	// index and data
-	char indexr[512], datar[512];
-	acpi_memset(indexr, 0, 512);
-	acpi_memset(datar, 0, 512);
+	char indexr[ACPI_MAX_NAME], datar[ACPI_MAX_NAME];
+	acpi_memset(indexr, 0, ACPI_MAX_NAME);
+	acpi_memset(datar, 0, ACPI_MAX_NAME);
 
 	indexfield += acpins_resolve_path(indexr, indexfield);
 	indexfield += acpins_resolve_path(datar, indexfield);
@@ -1253,7 +1253,7 @@ acpi_handle_t *acpins_get_deviceid(size_t index, acpi_object_t *id)
 	size_t i = 0, j = 0;
 
 	acpi_handle_t *handle;
-	char path[512];
+	char path[ACPI_MAX_NAME];
 	acpi_object_t device_id;
 
 	handle = acpins_get_device(j);

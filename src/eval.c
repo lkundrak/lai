@@ -121,7 +121,7 @@ size_t acpi_eval_object(acpi_object_t *destination, acpi_state_t *state, void *d
 	uint64_t integer;
 	size_t name_size;
 	acpi_handle_t *handle;
-	char name[512];
+	char name[ACPI_MAX_NAME];
 	acpi_object_t *destination_reg;
 	acpi_object_t *sizeof_object;
 	acpi_object_t n1, n2;

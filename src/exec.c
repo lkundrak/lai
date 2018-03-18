@@ -313,7 +313,7 @@ size_t acpi_methodinvoke(void *data, acpi_state_t *old_state, acpi_object_t *met
 	uint8_t *methodinvokation = (uint8_t*)data;
 
 	// save the state of the currently executing method
-	char path_save[512];
+	char path_save[ACPI_MAX_NAME];
 	acpi_strcpy(path_save, acpins_path);
 
 	size_t return_size = 0;

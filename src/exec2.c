@@ -161,7 +161,7 @@ size_t acpi_write_object(void *data, acpi_object_t *source, acpi_state_t *state)
 	// here, the name may only be an object or a field, it cannot be a MethodInvokation
 	if(acpi_is_name(dest[0]))
 	{
-		char name[512];
+		char name[ACPI_MAX_NAME];
 		size_t name_size;
 		name_size = acpins_resolve_path(name, dest);
 		acpi_handle_t *handle = acpi_exec_resolve(name);

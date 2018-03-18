@@ -72,7 +72,7 @@ void acpi_read_field(acpi_object_t *destination, acpi_handle_t *field)
 	void *mmio;
 
 	// these are for PCI
-	char name[512];
+	char name[ACPI_MAX_NAME];
 	acpi_object_t bus_number, address_number;
 	int eval_status;
 	size_t pci_byte_offset;
@@ -230,7 +230,7 @@ void acpi_write_field(acpi_handle_t *field, acpi_object_t *source)
 	void *mmio;
 
 	// these are for PCI
-	char name[512];
+	char name[ACPI_MAX_NAME];
 	acpi_object_t bus_number, address_number;
 	int eval_status;
 	size_t pci_byte_offset;
