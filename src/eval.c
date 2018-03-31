@@ -396,7 +396,7 @@ size_t acpi_eval_object(acpi_object_t *destination, acpi_state_t *state, void *d
 
 		destination->type = ACPI_INTEGER;
 
-		if(n1.integer == 0 && n2.integer == 0)
+		if(n1.integer != 0 && n2.integer != 0)
 			destination->integer = 1;
 		else
 			destination->integer = 0;

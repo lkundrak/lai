@@ -39,6 +39,7 @@ size_t acpi_exec_name(void *data, acpi_state_t *state)
 
 	size = acpi_eval_object(&handle->object, state, name);
 	return_size += size;
+
 	return return_size;
 }
 
@@ -51,30 +52,62 @@ size_t acpi_exec_name(void *data, acpi_state_t *state)
 size_t acpi_exec_buffer(acpi_object_t *destination, acpi_state_t *state, void *data)
 {
 	size_t return_size = 1;
+
 	uint8_t *buffer = (uint8_t*)data;
 	buffer++;		// skip BUFFER_OP
 
 	size_t pkgsize, size;
 	pkgsize = acpi_parse_pkgsize(buffer, &size);
-
-	buffer += pkgsize;
 	return_size += size;
 
 	acpi_object_t buffer_size;
-	size = acpi_eval_object(&buffer_size, state, buffer);
-
-	buffer += size;
+	buffer += pkgsize;
+	buffer += acpi_eval_object(&buffer_size, state, buffer);
 
 	destination->type = ACPI_BUFFER;
 	destination->buffer_size = buffer_size.integer;
 	destination->buffer = acpi_malloc(destination->buffer_size);
 
-	buffer = (uint8_t*)data;
-	buffer++;		// skip BUFFER_OP
-	pkgsize = acpi_parse_pkgsize(buffer, &size);
+	size -= ((size_t)buffer - (size_t)data);
+
+	if(size)
+		acpi_memcpy(destination->buffer, buffer, destination->buffer_size);
 
 	return return_size;
 }
+
+// acpi_exec_bytefield(): Creates a ByteField object
+// Param:	void *data - data
+// Param:	acpi_state_t *state - AML VM state
+// Return:	size_t - size for skipping
+
+size_t acpi_exec_bytefield(void *data, acpi_state_t *state)
+{
+	return acpins_create_bytefield(data);	// dirty af solution but good enough for now
+}
+
+
+// acpi_exec_wordfield(): Creates a WordField object
+// Param:	void *data - data
+// Param:	acpi_state_t *state - AML VM state
+// Return:	size_t - size for skipping
+
+size_t acpi_exec_wordfield(void *data, acpi_state_t *state)
+{
+	return acpins_create_wordfield(data);	// dirty af solution but good enough for now
+}
+
+
+// acpi_exec_dwordfield(): Creates a DwordField object
+// Param:	void *data - data
+// Param:	acpi_state_t *state - AML VM state
+// Return:	size_t - size for skipping
+
+size_t acpi_exec_dwordfield(void *data, acpi_state_t *state)
+{
+	return acpins_create_dwordfield(data);	// dirty af solution but good enough for now
+}
+
 
 
 

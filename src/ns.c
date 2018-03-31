@@ -934,6 +934,7 @@ size_t acpins_create_package(acpi_object_t *destination, void *data)
 
 	size_t pkgsize, size;
 	pkgsize = acpi_parse_pkgsize(package, &size);
+	size_t size_bak = size;
 
 	package += pkgsize;
 	uint8_t count = package[0];		// entry count
@@ -949,7 +950,7 @@ size_t acpins_create_package(acpi_object_t *destination, void *data)
 
 	//acpi_printf("acpins_create_package: start:\n");
 
-	while(i < count)
+	while(i < count && j + pkgsize + 1 < size_bak)
 	{
 		integer_size = acpi_eval_integer(&package[j], &integer);
 		if(integer_size != 0)
@@ -1263,7 +1264,12 @@ acpi_handle_t *acpins_get_deviceid(size_t index, acpi_object_t *id)
 		acpi_strcpy(path, handle->path);
 		acpi_strcpy(path + acpi_strlen(path), "._HID");	// hardware ID
 		acpi_memset(&device_id, 0, sizeof(acpi_object_t));
-		acpi_eval(&device_id, path);
+		if(acpi_eval(&device_id, path) != 0)
+		{
+			acpi_strcpy(path + acpi_strlen(path) - 5, "._CID");	// compatible ID
+			acpi_memset(&device_id, 0, sizeof(acpi_object_t));
+			acpi_eval(&device_id, path);
+		}
 
 		if(device_id.type == ACPI_INTEGER && id->type == ACPI_INTEGER)
 		{

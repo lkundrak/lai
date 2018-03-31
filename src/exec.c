@@ -250,6 +250,15 @@ int acpi_exec(uint8_t *method, size_t size, acpi_state_t *state, acpi_object_t *
 		case NAME_OP:
 			i += acpi_exec_name(&method[i], state);
 			break;
+		case BYTEFIELD_OP:
+			i += acpi_exec_bytefield(&method[i], state);
+			break;
+		case WORDFIELD_OP:
+			i += acpi_exec_wordfield(&method[i], state);
+			break;
+		case DWORDFIELD_OP:
+			i += acpi_exec_dwordfield(&method[i], state);
+			break;
 		case STORE_OP:
 			i += acpi_exec_store(&method[i], state);
 			break;

@@ -10,12 +10,13 @@
 #include "aml_opcodes.h"
 
 #define ACPI_MAX_NAME			64
+#define ACPI_MAX_RESOURCES		512
 
 #define ACPI_GAS_MMIO			0
 #define ACPI_GAS_IO			1
 #define ACPI_GAS_PCI			2
 
-#define ACPI_MAX_NAMESPACE_ENTRIES	ACPI_MAX_NAME	// realloc()'d, to save memory
+#define ACPI_MAX_NAMESPACE_ENTRIES	128	// realloc()'d, to save memory
 #define ACPI_MAX_PACKAGE_ENTRIES	256	// for Package() because the size is 8 bits, VarPackage() is unlimited
 
 #define ACPI_NAMESPACE_NAME		1
@@ -60,6 +61,21 @@
 // FADT Control Block
 #define ACPI_ENABLED			0x0001
 #define ACPI_SLEEP			0x2000
+
+// Parsing Resource Templates
+#define ACPI_RESOURCE_MEMORY		1
+#define ACPI_RESOURCE_IO		2
+#define ACPI_RESOURCE_IRQ		3
+
+// IRQ Flags
+#define ACPI_IRQ_LEVEL			0x00
+#define ACPI_IRQ_EDGE			0x01
+#define ACPI_IRQ_ACTIVE_HIGH		0x00
+#define ACPI_IRQ_ACTIVE_LOW		0x08
+#define ACPI_IRQ_EXCLUSIVE		0x00
+#define ACPI_IRQ_SHARED			0x10
+#define ACPI_IRQ_NO_WAKE		0x00
+#define ACPI_IRQ_WAKE			0x20
 
 typedef struct acpi_rsdp_t
 {
@@ -250,6 +266,37 @@ typedef struct acpi_state_t
 	acpi_condition_t condition[16];
 } acpi_state_t;
 
+typedef struct acpi_resource_t
+{
+	uint8_t type;
+
+	uint64_t base;			// valid for everything
+
+	uint64_t length;		// valid for I/O and MMIO
+
+	uint8_t address_space;		// these are valid --
+	uint8_t bit_width;		// -- only for --
+	uint8_t bit_offset;		// -- generic registers
+
+	uint8_t irq_flags;		// valid for IRQs
+} acpi_resource_t;
+
+typedef struct acpi_small_irq_t
+{
+	uint8_t id;
+	uint16_t irq_mask;
+	uint8_t config;
+}__attribute__((packed)) acpi_small_irq_t;
+
+typedef struct acpi_large_irq_t
+{
+	uint8_t id;
+	uint16_t size;
+	uint8_t config;
+	uint8_t length;
+	uint32_t irq;
+}__attribute__((packed)) acpi_large_irq_t;
+
 acpi_fadt_t *acpi_fadt;
 acpi_aml_t *acpi_dsdt;
 acpi_handle_t *acpi_namespace;
@@ -310,6 +357,7 @@ acpi_handle_t *acpins_resolve(char *);
 acpi_handle_t *acpins_get_device(size_t);
 acpi_handle_t *acpins_get_deviceid(size_t, acpi_object_t *);
 void acpi_eisaid(acpi_object_t *, char *);
+size_t acpi_read_resource(acpi_handle_t *, acpi_resource_t *);
 
 // ACPI Control Methods
 size_t acpi_eval_object(acpi_object_t *, acpi_state_t *, void *);
@@ -341,9 +389,12 @@ uint8_t acpi_char_to_hex(char);
 size_t acpi_exec_multiply(void *, acpi_state_t *);
 size_t acpi_exec_divide(void *, acpi_state_t *);
 void acpi_write_buffer(acpi_handle_t *, acpi_object_t *);
+size_t acpi_exec_bytefield(void *, acpi_state_t *);
+size_t acpi_exec_wordfield(void *, acpi_state_t *);
+size_t acpi_exec_dwordfield(void *, acpi_state_t *);
 
 // Generic Functions
 int acpi_enter_sleep(uint8_t);
-
+int acpi_pci_route(acpi_resource_t *, uint8_t, uint8_t, uint8_t);
 
 
