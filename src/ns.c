@@ -1060,15 +1060,15 @@ size_t acpins_create_bytefield(void *data)
 	return_size += name_size;
 	bytefield += name_size;
 
-	size_t integer_size;
-	uint64_t integer;
-	integer_size = acpi_eval_integer(bytefield, &integer);
+	size_t object_size;
+	acpi_object_t object;
+	object_size = acpi_eval_object(&object, &acpins_state, bytefield);
 
-	acpi_namespace[acpi_namespace_entries].buffer_offset = integer * 8;
+	acpi_namespace[acpi_namespace_entries].buffer_offset = object.integer * 8;
 	acpi_namespace[acpi_namespace_entries].buffer_size = 8;
 
-	return_size += integer_size;
-	bytefield += integer_size;
+	return_size += object_size;
+	bytefield += object_size;
 
 	name_size = acpins_resolve_path(acpi_namespace[acpi_namespace_entries].path, bytefield);
 
@@ -1096,15 +1096,15 @@ size_t acpins_create_wordfield(void *data)
 	return_size += name_size;
 	wordfield += name_size;
 
-	size_t integer_size;
-	uint64_t integer;
-	integer_size = acpi_eval_integer(wordfield, &integer);
+	size_t object_size;
+	acpi_object_t object;
+	object_size = acpi_eval_object(&object, &acpins_state, wordfield);
 
-	acpi_namespace[acpi_namespace_entries].buffer_offset = integer * 8;
+	acpi_namespace[acpi_namespace_entries].buffer_offset = object.integer * 8;
 	acpi_namespace[acpi_namespace_entries].buffer_size = 16;	// bits
 
-	return_size += integer_size;
-	wordfield += integer_size;
+	return_size += object_size;
+	wordfield += object_size;
 
 	name_size = acpins_resolve_path(acpi_namespace[acpi_namespace_entries].path, wordfield);
 
@@ -1134,15 +1134,15 @@ size_t acpins_create_dwordfield(void *data)
 	return_size += name_size;
 	dwordfield += name_size;
 
-	size_t integer_size;
-	uint64_t integer;
-	integer_size = acpi_eval_integer(dwordfield, &integer);
+	size_t object_size;
+	acpi_object_t object;
+	object_size = acpi_eval_object(&object, &acpins_state, dwordfield);
 
-	acpi_namespace[acpi_namespace_entries].buffer_offset = integer * 8;
+	acpi_namespace[acpi_namespace_entries].buffer_offset = object.integer * 8;
 	acpi_namespace[acpi_namespace_entries].buffer_size = 32;
 
-	return_size += integer_size;
-	dwordfield += integer_size;
+	return_size += object_size;
+	dwordfield += object_size;
 
 	name_size = acpins_resolve_path(acpi_namespace[acpi_namespace_entries].path, dwordfield);
 
@@ -1170,15 +1170,15 @@ size_t acpins_create_qwordfield(void *data)
 	return_size += name_size;
 	qwordfield += name_size;
 
-	size_t integer_size;
-	uint64_t integer;
-	integer_size = acpi_eval_integer(qwordfield, &integer);
+	size_t object_size;
+	acpi_object_t object;
+	object_size = acpi_eval_object(&object, &acpins_state, qwordfield);
 
-	acpi_namespace[acpi_namespace_entries].buffer_offset = integer * 8;
+	acpi_namespace[acpi_namespace_entries].buffer_offset = object.integer * 8;
 	acpi_namespace[acpi_namespace_entries].buffer_size = 64;
 
-	return_size += integer_size;
-	qwordfield += integer_size;
+	return_size += object_size;
+	qwordfield += object_size;
 
 	name_size = acpins_resolve_path(acpi_namespace[acpi_namespace_entries].path, qwordfield);
 
