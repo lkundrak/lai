@@ -30,6 +30,7 @@
 #define ACPI_NAMESPACE_PROCESSOR	9
 #define ACPI_NAMESPACE_BUFFER_FIELD	10
 #define ACPI_NAMESPACE_THERMALZONE	11
+#define ACPI_NAMESPACE_POWER		12
 
 #define ACPI_INTEGER			1
 #define ACPI_STRING			2
@@ -349,6 +350,7 @@ size_t acpins_create_mutex(void *);
 size_t acpins_create_indexfield(void *);
 size_t acpins_create_package(acpi_object_t *, void *);
 size_t acpins_create_processor(void *);
+size_t acpins_create_power(void *);
 size_t acpins_create_bytefield(void *);
 size_t acpins_create_wordfield(void *);
 size_t acpins_create_dwordfield(void *);

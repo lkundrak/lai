@@ -297,6 +297,9 @@ void acpins_register_scope(uint8_t *data, size_t size)
 			case PROCESSOR:
 				count += acpins_create_processor(&data[count]);
 				break;
+			case POWER:
+				count += acpins_create_power(&data[count]);
+				break;
 
 			default:
 				acpi_panic("acpi: undefined opcode, sequence: %xb %xb %xb %xb\n", data[count], data[count+1], data[count+2], data[count+3]);
@@ -1035,6 +1038,28 @@ size_t acpins_create_processor(void *data)
 	acpi_namespace[acpi_namespace_entries].cpu_id = processor[0];
 
 	//acpi_printf("acpi: processor %s ACPI ID %d\n", acpi_namespace[acpi_namespace_entries].path, acpi_namespace[acpi_namespace_entries].cpu_id);
+
+	acpins_increment_namespace();
+
+	return size + 2;
+}
+
+// acpins_create_power(): Creates a Power object in the namespace
+// Param:	void *data - pointer to data
+// Return:	size_t - total size in bytes, for skipping
+
+size_t acpins_create_power(void *data)
+{
+	uint8_t *power = (uint8_t*)data;
+	power += 2;			// skip over POWER_OP
+
+	size_t pkgsize, size;
+	pkgsize = acpi_parse_pkgsize(power, &size);
+	power += pkgsize;
+
+	acpi_namespace[acpi_namespace_entries].type = ACPI_NAMESPACE_POWER;
+	size_t name_size = acpins_resolve_path(acpi_namespace[acpi_namespace_entries].path, power);
+	power += name_size;
 
 	acpins_increment_namespace();
 
