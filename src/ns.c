@@ -114,6 +114,7 @@ void acpins_increment_namespace()
 	acpi_namespace_entries++;
 	if((acpi_namespace_entries % ACPI_MAX_NAMESPACE_ENTRIES) == 0)
 		acpi_namespace = acpi_realloc(acpi_namespace, (acpi_namespace_entries + ACPI_MAX_NAMESPACE_ENTRIES + 1) * sizeof(acpi_handle_t));
+	acpi_memset(&acpi_namespace[acpi_namespace_entries], 0, sizeof(acpi_handle_t));
 }
 
 // acpi_create_namespace(): Initializes the AML interpreter and creates the ACPI namespace

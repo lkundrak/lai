@@ -329,6 +329,7 @@ size_t acpi_methodinvoke(void *data, acpi_state_t *old_state, acpi_object_t *met
 
 	// determine the name of the method
 	acpi_state_t *state = acpi_malloc(sizeof(acpi_state_t));
+	acpi_memset(state, 0, sizeof(acpi_state_t));
 	size_t name_size = acpins_resolve_path(state->name, methodinvokation);
 	return_size += name_size;
 	methodinvokation += name_size;
